@@ -45,6 +45,16 @@ static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* a
     return Py_BuildValue("i", result);
 }
 
+static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args){
+    char* servers;
+    if (!PyArg_ParseTuple(args, "z", &servers)){
+        return NULL;
+    }
+    gearman_return_t result = gearman_client_add_servers(self->g_Client, servers);
+    return Py_BuildValue("i", result);
+}
+
+
 #define CLIENT_OPT_NON_BLOCKING "non_blocking"
 #define CLIENT_OPT_UNBUFFERED_RESULT "unbuffered_result"
 #define CLIENT_OPT_FREE_TASKS "free_tasks"

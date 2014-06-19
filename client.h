@@ -27,6 +27,18 @@ void Client_dealloc(pygear_ClientObject* self);
 /* Method definitions */
 static PyObject* pygear_client_add_server(pygear_ClientObject *self, PyObject *args);
 PyDoc_STRVAR(pygear_client_add_server_doc,
+"Add a list of job servers to a client. The format for the server list is:\n"
+"SERVER[:PORT][,SERVER[:PORT]]...\n"
+"Some examples are:\n"
+"10.0.0.1,10.0.0.2,10.0.0.3\n"
+"localhost234,jobserver2.domain.com:7003,10.0.0.3\n"
+"@param[in] client Structure previously initialized with "
+"gearman_client_create() or gearman_client_clone().\n"
+"@param[in] servers Server list described above.\n"
+"@return Standard gearman return value.");
+
+static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_add_servers_doc,
 "Add a job server to a client. This goes into a list of servers that can be\n"
 "used to run tasks. No socket I/O happens here, it is just added to a list.\n"
 "@param[in] client Structure previously initialized with "
@@ -50,6 +62,7 @@ PyDoc_STRVAR(pygear_client_get_options_doc,
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
     _PYMETHOD(add_server, METH_VARARGS)
+    _PYMETHOD(add_servers, METH_VARARGS)
     _PYMETHOD(set_options, METH_KEYWORDS)
     _PYMETHOD(get_options, METH_NOARGS)
     {NULL, NULL, 0, NULL}
