@@ -10,7 +10,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#define _PYMETHOD(name,flags) {#name,(PyCFunction) pygear_client_##name,flags,pygear_client_##name##_doc},
+#define _CLIENTMETHOD(name,flags) {#name,(PyCFunction) pygear_client_##name,flags,pygear_client_##name##_doc},
 
 typedef struct {
     PyObject_HEAD
@@ -47,6 +47,14 @@ PyDoc_STRVAR(pygear_client_add_servers_doc,
 "@param[in] port Port of the server to add.\n"
 "@return Standard gearman return value.");
 
+static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_add_task_doc,
+"Add a task to be run in parallel.\n\n"
+"@param[in] function_name The name of the function to run.\n"
+"@param[in] workload The workload to pass to the function when it is run.\n"
+"@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
+"@return A tuple of return code, Task object. On failure the Task will be None.");
+
 static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_set_options_doc,
 "Add a number of options to a Gearman client.\n"
@@ -55,16 +63,17 @@ PyDoc_STRVAR(pygear_client_set_options_doc,
 "disabled.\nAvailable options are:\n"
 "non_blocking, unbuffered_result, free_tasks and generate_unique");
 
-static PyObject* pygear_client_get_options(pygear_ClientObject* self);
+static PyObject* pygear_client_get_options(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_get_options_doc,
 "Returns a dictionary of the current options set on the client");
 
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
-    _PYMETHOD(add_server, METH_VARARGS)
-    _PYMETHOD(add_servers, METH_VARARGS)
-    _PYMETHOD(set_options, METH_KEYWORDS)
-    _PYMETHOD(get_options, METH_NOARGS)
+    _CLIENTMETHOD(add_server, METH_VARARGS)
+    _CLIENTMETHOD(add_servers, METH_VARARGS)
+    _CLIENTMETHOD(add_task, METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(set_options, METH_KEYWORDS)
+    _CLIENTMETHOD(get_options, METH_NOARGS)
     {NULL, NULL, 0, NULL}
 };
 

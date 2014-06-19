@@ -8,12 +8,21 @@ PyMODINIT_FUNC initpygear(void){
         return;
     }
 
+    pygear_TaskType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&pygear_TaskType) < 0){
+        return;
+    }
+
     // Initialize pygear module
     m = Py_InitModule3("pygear", pygear_class_methods, pygear_class_docstring);
 
     // Add Client class
     Py_INCREF(&pygear_ClientType);
     PyModule_AddObject(m, "Client", (PyObject *)&pygear_ClientType);
+
+    // Add Task class
+    Py_INCREF(&pygear_TaskType);
+    PyModule_AddObject(m, "Task", (PyObject *)&pygear_TaskType);
 }
 
 #define RET_CASE(RETTYPE) \

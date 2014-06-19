@@ -31,10 +31,14 @@ void Client_dealloc(pygear_ClientObject* self){
     self->ob_type->tp_free((PyObject*)self);
 }
 
-/*
- * Instance methods
+/********************
+ * Instance methods *
+ ********************
  */
 
+/*
+ * Server management
+ */
 static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* args){
     char* host;
     int port;
@@ -54,6 +58,50 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
     return Py_BuildValue("i", result);
 }
 
+/*
+ * Task Management
+ */
+
+static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
+    // Mandatory arguments
+    char* function_name;
+    char* workload;
+    int workload_size;
+    gearman_return_t ret;
+
+    // Optional arguments
+    char* unique = NULL;
+    static char* kwlist[] = {"function", "workload", "unique", NULL};
+
+
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|s", kwlist,
+        &function_name, &workload, &workload_size, &unique)){
+        return NULL;
+    }
+    gearman_task_st* new_task = gearman_client_add_task(
+        self->g_Client,
+        NULL, // Allocate new task_st
+        NULL, // Application Context
+        function_name,
+        unique,
+        workload,
+        workload_size,
+        &ret);
+
+    fprintf(stderr, "Added task\n");
+
+    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
+    fprintf(stderr, "Allocated task\n");
+    python_task->g_Task = new_task;
+    fprintf(stderr, "Assign task\n");
+
+    return Py_BuildValue("(i, O)", ret, python_task);
+}
+
+/*
+ *
+ */
 
 #define CLIENT_OPT_NON_BLOCKING "non_blocking"
 #define CLIENT_OPT_UNBUFFERED_RESULT "unbuffered_result"
