@@ -35,9 +35,23 @@ PyDoc_STRVAR(pygear_client_add_server_doc,
 "@param[in] port Port of the server to add.\n"
 "@return Standard gearman return value.");
 
+static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_set_options_doc,
+"Add a number of options to a Gearman client.\n"
+"Options are specified as keyword arguments. If an argument is set to True, "
+"the option is enabled. If an argument is false or omitted, the option is "
+"disabled.\nAvailable options are:\n"
+"non_blocking, unbuffered_result, free_tasks and generate_unique");
+
+static PyObject* pygear_client_get_options(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_get_options_doc,
+"Returns a dictionary of the current options set on the client");
+
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
     _PYMETHOD(add_server, METH_VARARGS)
+    _PYMETHOD(set_options, METH_KEYWORDS)
+    _PYMETHOD(get_options, METH_NOARGS)
     {NULL, NULL, 0, NULL}
 };
 
