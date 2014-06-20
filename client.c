@@ -20,6 +20,17 @@ int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
     if (self->g_Client == NULL) {
         return 1;
     }
+
+    // Callbacks
+    self->cb_workload = NULL;
+    self->cb_created = NULL;
+    self->cb_data = NULL;
+    self->cb_warning = NULL;
+    self->cb_status = NULL;
+    self->cb_complete = NULL;
+    self->cb_exception = NULL;
+    self->cb_fail = NULL;
+
     return 0;
 }
 
@@ -28,6 +39,17 @@ void Client_dealloc(pygear_ClientObject* self){
         gearman_client_free(self->g_Client);
         self->g_Client = NULL;
     }
+
+    // Decrement the reference count for callback functions, if they are set
+    Py_XDECREF(self->cb_workload);
+    Py_XDECREF(self->cb_created);
+    Py_XDECREF(self->cb_data);
+    Py_XDECREF(self->cb_warning);
+    Py_XDECREF(self->cb_status);
+    Py_XDECREF(self->cb_complete);
+    Py_XDECREF(self->cb_exception);
+    Py_XDECREF(self->cb_fail);
+
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -62,6 +84,12 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
  * Task Management
  */
 
+#define COPY_AND_INCREF_CB(SOURCE,DEST,CB) \
+    DEST.cb_##CB = SOURCE->cb_##CB; \
+    if (DEST.cb_##CB){ \
+        Py_INCREF(DEST.cb_##CB); \
+    }
+
 static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
     // Mandatory arguments
     char* function_name;
@@ -73,15 +101,18 @@ static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* arg
     char* unique = NULL;
     static char* kwlist[] = {"function", "workload", "unique", NULL};
 
-
-
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|s", kwlist,
         &function_name, &workload, &workload_size, &unique)){
         return NULL;
     }
-    gearman_task_st* new_task = gearman_client_add_task(
+    // We pass in a larger struct than is necessary, since we have additional
+    // state that we want to preserve. pygear_task_st contains a gearman_task_st
+    // as part of a union, so that it should function normally inside
+    // gearman libraries.
+    gearman_task_st* new_task = malloc(sizeof(pygear_task_st));
+    new_task = gearman_client_add_task(
         self->g_Client,
-        NULL, // Allocate new task_st
+        new_task,
         NULL, // Application Context
         function_name,
         unique,
@@ -89,15 +120,128 @@ static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* arg
         workload_size,
         &ret);
 
-    fprintf(stderr, "Added task\n");
-
     pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
-    fprintf(stderr, "Allocated task\n");
+
     python_task->g_Task = new_task;
-    fprintf(stderr, "Assign task\n");
+
+    pygear_task_st* py_task = (pygear_task_st*) new_task;
+
+    // Assign the current callbacks to the task
+    COPY_AND_INCREF_CB(self, py_task->extended_task, workload)
+    COPY_AND_INCREF_CB(self, py_task->extended_task, created)
+    COPY_AND_INCREF_CB(self, py_task->extended_task, data)
+    COPY_AND_INCREF_CB(self, py_task->extended_task, warning)
+    COPY_AND_INCREF_CB(self, py_task->extended_task, status)
+    COPY_AND_INCREF_CB(self, py_task->extended_task, complete)
+    COPY_AND_INCREF_CB(self, py_task->extended_task, exception)
+    COPY_AND_INCREF_CB(self, py_task->extended_task, fail)
 
     return Py_BuildValue("(i, O)", ret, python_task);
 }
+
+static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
+    // Mandatory arguments
+    char* function_name;
+    char* workload;
+    int workload_size;
+
+    // Optional arguments
+    char* unique = NULL;
+    char* name = NULL;
+
+    static char* kwlist[] = {"function", "workload", "unique", "name", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|ss", kwlist,
+        &function_name, &workload, &workload_size, &unique, &name)){
+        return NULL;
+    }
+    gearman_argument_t arguments = gearman_argument_make(
+        name, (name ? strlen(name) : 0),
+        workload, workload_size
+    );
+
+    gearman_task_st* new_task = gearman_execute(
+        self->g_Client,
+        function_name, strlen(function_name),
+        unique, (unique? strlen(unique) : 0),
+        NULL, // Workload
+        &arguments,
+        NULL
+    );
+
+    if (new_task == NULL){
+        return Py_BuildValue("(i, s)", gearman_client_error(self->g_Client), "");
+    }
+
+    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
+    python_task->g_Task = new_task;
+
+    if (gearman_success(gearman_task_return(new_task))){
+        gearman_result_st *result= gearman_task_result(new_task);
+        int result_size = gearman_result_size(result);
+        const char* result_data = gearman_result_value(result);
+        return Py_BuildValue("(i, s#)", 0, result_data, result_size);
+    } else {
+        int worker_error = gearman_task_return(new_task);
+        return Py_BuildValue("(i, s)", worker_error, "");
+    }
+}
+
+static PyObject* pygear_client_run_tasks(pygear_ClientObject* self){
+    return Py_BuildValue("i", gearman_client_run_tasks(self->g_Client));
+}
+
+static PyObject* pygear_client_wait(pygear_ClientObject* self){
+    return Py_BuildValue("i", gearman_client_wait(self->g_Client));
+}
+
+/*
+ * Callback function management
+ */
+
+#define CALLBACK_WRAPPER(CB) gearman_return_t pygear_client_wrap_callback_##CB(gearman_task_st* gear_task) { \
+    pygear_task_st* task = (pygear_task_st*) gear_task; \
+    if (!task->extended_task.cb_##CB){ \
+        return GEARMAN_SUCCESS; \
+    } \
+    /* Need to lock the GIL to avoid undefined behaviour */ \
+    PyGILState_STATE gstate = PyGILState_Ensure(); \
+    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType); \
+    python_task->g_Task = gear_task; \
+    PyObject* callback_return = PyObject_CallFunction(task->extended_task.cb_##CB, "O", python_task); \
+    if (!callback_return){ \
+        fprintf(stderr, "Callback function failed!\n"); \
+    } \
+    /* Release the thread */ \
+    PyGILState_Release(gstate); \
+    return GEARMAN_SUCCESS; \
+}
+
+#define CALLBACK_SETTER(CB) static PyObject* pygear_client_set_##CB##_fn(pygear_ClientObject* self, PyObject* args){ \
+    PyObject* callback_fn; \
+    if (!PyArg_ParseTuple(args, "O", &callback_fn)){ \
+        return NULL; \
+    } \
+    Py_INCREF(callback_fn); \
+    if (self->cb_##CB){ \
+        Py_DECREF(self->cb_##CB); \
+    } \
+    self->cb_##CB = callback_fn; \
+    gearman_client_set_##CB##_fn(self->g_Client, pygear_client_wrap_callback_##CB);\
+    Py_RETURN_NONE; \
+}
+
+#define CALLBACK_HANDLE(CB) CALLBACK_WRAPPER(CB) CALLBACK_SETTER(CB)
+
+CALLBACK_HANDLE(workload)
+CALLBACK_HANDLE(created)
+CALLBACK_HANDLE(data)
+CALLBACK_HANDLE(warning)
+CALLBACK_HANDLE(status)
+CALLBACK_HANDLE(complete)
+CALLBACK_HANDLE(exception)
+CALLBACK_HANDLE(fail)
+
 
 /*
  *

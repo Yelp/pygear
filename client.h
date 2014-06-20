@@ -15,6 +15,14 @@
 typedef struct {
     PyObject_HEAD
     struct gearman_client_st* g_Client;
+    PyObject* cb_workload;
+    PyObject* cb_created;
+    PyObject* cb_data;
+    PyObject* cb_warning;
+    PyObject* cb_status;
+    PyObject* cb_complete;
+    PyObject* cb_exception;
+    PyObject* cb_fail;
 } pygear_ClientObject;
 
 PyDoc_STRVAR(client_module_docstring, "Represents a Gearman client");
@@ -55,6 +63,15 @@ PyDoc_STRVAR(pygear_client_add_task_doc,
 "@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
 "@return A tuple of return code, Task object. On failure the Task will be None.");
 
+static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_execute_doc,
+"Run a task immediately and wait for the return.\n\n"
+"@param[in] function_name The name of the function to run.\n"
+"@param[in] workload The workload to pass to the function when it is run.\n"
+"@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
+"@param[in] name Optional name for the gearman_argument_t.\n"
+"@return A tuple of return code, Task object. On failure the Task will be None.");
+
 static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_set_options_doc,
 "Add a number of options to a Gearman client.\n"
@@ -67,11 +84,85 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self, PyObject* 
 PyDoc_STRVAR(pygear_client_get_options_doc,
 "Returns a dictionary of the current options set on the client");
 
+static PyObject* pygear_client_run_tasks(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_run_tasks_doc,
+"Run tasks that have been added in parallel");
+
+static PyObject* pygear_client_wait(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_wait_doc,
+"When in non-blocking I/O mode, wait for activity from one of the servers.");
+
+static PyObject* pygear_client_set_workload_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_workload_fn_doc,
+"Callback function when workload data needs to be sent for a task.\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
+static PyObject* pygear_client_set_created_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_created_fn_doc,
+"Callback function when a job has been created for a task.\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
+static PyObject* pygear_client_set_data_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_data_fn_doc,
+"Callback function when there is a data packet for a task..\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
+static PyObject* pygear_client_set_warning_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_warning_fn_doc,
+"Callback function when there is a warning packet for a task.\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
+static PyObject* pygear_client_set_status_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_status_fn_doc,
+"Callback function when there is a status packet for a task.\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
+static PyObject* pygear_client_set_complete_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_complete_fn_doc,
+"Callback function when a task is complete.\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
+static PyObject* pygear_client_set_exception_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_exception_fn_doc,
+"Callback function when there is an exception packet for a task.\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
+static PyObject* pygear_client_set_fail_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_fail_fn_doc,
+"Callback function when a task has failed.\n"
+"@param[in] function Function to call. Must take one argument, which will be \n"
+"of type pygear.Task");
+
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
+    // Server management
     _CLIENTMETHOD(add_server, METH_VARARGS)
     _CLIENTMETHOD(add_servers, METH_VARARGS)
+
+    // Task management
     _CLIENTMETHOD(add_task, METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(execute, METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(run_tasks, METH_NOARGS)
+    _CLIENTMETHOD(wait, METH_NOARGS)
+
+    // Callbacks
+    _CLIENTMETHOD(set_workload_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_created_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_data_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_warning_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_status_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_complete_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_exception_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_fail_fn, METH_VARARGS)
+
+    // Client Options
     _CLIENTMETHOD(set_options, METH_KEYWORDS)
     _CLIENTMETHOD(get_options, METH_NOARGS)
     {NULL, NULL, 0, NULL}
