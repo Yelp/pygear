@@ -3,6 +3,7 @@
 #include "client.c"
 #include "task.c"
 #include "job.c"
+#include "worker.c"
 
 PyDoc_STRVAR(pygear_class_docstring,
 "PyGear is a python wrapper for the libgearman C library");

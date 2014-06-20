@@ -18,6 +18,11 @@ PyMODINIT_FUNC initpygear(void){
         return;
     }
 
+    pygear_WorkerType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&pygear_WorkerType) < 0){
+        return;
+    }
+
     // Initialize pygear module
     m = Py_InitModule3("pygear", pygear_class_methods, pygear_class_docstring);
 
@@ -32,6 +37,10 @@ PyMODINIT_FUNC initpygear(void){
     // Add Job class
     Py_INCREF(&pygear_JobType);
     PyModule_AddObject(m, "Job", (PyObject *)&pygear_JobType);
+
+    // Add Worker class
+    Py_INCREF(&pygear_WorkerType);
+    PyModule_AddObject(m, "Worker", (PyObject *)&pygear_WorkerType);
 }
 
 #define RET_CASE(RETTYPE) \
