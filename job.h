@@ -2,6 +2,7 @@
 #include <libgearman-1.0/gearman.h>
 #include <stdio.h>
 #include "structmember.h"
+#include "worker.h"
 
 #ifndef PyMODINIT_FUNC
 #define PyMODINIT_FUNC void
