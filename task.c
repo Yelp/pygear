@@ -22,17 +22,6 @@ int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
 
 void Task_dealloc(pygear_TaskObject* self){
     if (self->g_Task){
-        // Decrement the reference count for callback functions, if they are set
-        pygear_task_st* ext_task = (pygear_task_st*) self->g_Task;
-        Py_XDECREF(ext_task->extended_task.cb_workload);
-        Py_XDECREF(ext_task->extended_task.cb_created);
-        Py_XDECREF(ext_task->extended_task.cb_data);
-        Py_XDECREF(ext_task->extended_task.cb_warning);
-        Py_XDECREF(ext_task->extended_task.cb_status);
-        Py_XDECREF(ext_task->extended_task.cb_complete);
-        Py_XDECREF(ext_task->extended_task.cb_exception);
-        Py_XDECREF(ext_task->extended_task.cb_fail);
-
         gearman_task_free(self->g_Task);
         self->g_Task = NULL;
     }

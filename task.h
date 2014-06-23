@@ -12,33 +12,6 @@
 
 #define _TASKMETHOD(name,flags) {#name,(PyCFunction) pygear_task_##name,flags,pygear_task_##name##_doc},
 
-/*
- * pygear_task_st is a union that can be cast to and used as a gearman_task_st
- * within the actual gearman libraries, but also has optional pygear state.
- * Using pygear_task_st is necessary to store Python callback information, since
- * the libgearman callback functions require the function contract
- *      gearman_return_t (func)(gearman_task_st *task);
- * In order to be able to pass callbacks on to Python, we store function objects
- * and have wrapper callback functions that re-wrap the gearman_task_st in a
- * Python Task object and then call the appropriate function with the Task as
- * an argument.
- */
-
-typedef union {
-    gearman_task_st task;
-    struct {
-        gearman_task_st task;
-        PyObject* cb_workload;
-        PyObject* cb_created;
-        PyObject* cb_data;
-        PyObject* cb_warning;
-        PyObject* cb_status;
-        PyObject* cb_complete;
-        PyObject* cb_exception;
-        PyObject* cb_fail;
-    } extended_task;
-} pygear_task_st;
-
 typedef struct {
     PyObject_HEAD
     struct gearman_task_st* g_Task;
