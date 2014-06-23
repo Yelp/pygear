@@ -63,6 +63,31 @@ PyDoc_STRVAR(pygear_client_add_task_doc,
 "@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
 "@return A tuple of return code, Task object. On failure the Task will be None.");
 
+static PyObject* pygear_client_add_task_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_add_task_background_doc,
+"Add a background task to be run in parallel."
+"See gearman_client_add_task() for details.");
+
+static PyObject* pygear_client_add_task_high(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_add_task_high_doc,
+"Add a high priority task to be run in parallel."
+"See gearman_client_add_task() for details.");
+
+static PyObject* pygear_client_add_task_high_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_add_task_high_background_doc,
+"Add a high priority background task to be run in parallel."
+"See gearman_client_add_task() for details.");
+
+static PyObject* pygear_client_add_task_low(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_add_task_low_doc,
+"Add a low priority task to be run in parallel."
+"See gearman_client_add_task() for details.");
+
+static PyObject* pygear_client_add_task_low_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_add_task_low_background_doc,
+"Add a low priority background task to be run in parallel."
+"See gearman_client_add_task() for details.");
+
 static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_execute_doc,
 "Run a task immediately and wait for the return.\n\n"
@@ -143,28 +168,33 @@ PyDoc_STRVAR(pygear_client_set_fail_fn_doc,
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
     // Server management
-    _CLIENTMETHOD(add_server, METH_VARARGS)
-    _CLIENTMETHOD(add_servers, METH_VARARGS)
+    _CLIENTMETHOD(add_server,               METH_VARARGS)
+    _CLIENTMETHOD(add_servers,              METH_VARARGS)
 
     // Task management
-    _CLIENTMETHOD(add_task, METH_VARARGS | METH_KEYWORDS)
-    _CLIENTMETHOD(execute, METH_VARARGS | METH_KEYWORDS)
-    _CLIENTMETHOD(run_tasks, METH_NOARGS)
-    _CLIENTMETHOD(wait, METH_NOARGS)
+    _CLIENTMETHOD(add_task,                 METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(add_task_background,      METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(add_task_high,            METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(add_task_high_background, METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(add_task_low,             METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(add_task_low_background,  METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(execute,                  METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(run_tasks,                METH_NOARGS)
+    _CLIENTMETHOD(wait,                     METH_NOARGS)
 
     // Callbacks
-    _CLIENTMETHOD(set_workload_fn, METH_VARARGS)
-    _CLIENTMETHOD(set_created_fn, METH_VARARGS)
-    _CLIENTMETHOD(set_data_fn, METH_VARARGS)
-    _CLIENTMETHOD(set_warning_fn, METH_VARARGS)
-    _CLIENTMETHOD(set_status_fn, METH_VARARGS)
-    _CLIENTMETHOD(set_complete_fn, METH_VARARGS)
-    _CLIENTMETHOD(set_exception_fn, METH_VARARGS)
-    _CLIENTMETHOD(set_fail_fn, METH_VARARGS)
+    _CLIENTMETHOD(set_workload_fn,          METH_VARARGS)
+    _CLIENTMETHOD(set_created_fn,           METH_VARARGS)
+    _CLIENTMETHOD(set_data_fn,              METH_VARARGS)
+    _CLIENTMETHOD(set_warning_fn,           METH_VARARGS)
+    _CLIENTMETHOD(set_status_fn,            METH_VARARGS)
+    _CLIENTMETHOD(set_complete_fn,          METH_VARARGS)
+    _CLIENTMETHOD(set_exception_fn,         METH_VARARGS)
+    _CLIENTMETHOD(set_fail_fn,              METH_VARARGS)
 
     // Client Options
-    _CLIENTMETHOD(set_options, METH_KEYWORDS)
-    _CLIENTMETHOD(get_options, METH_NOARGS)
+    _CLIENTMETHOD(set_options,              METH_KEYWORDS)
+    _CLIENTMETHOD(get_options,              METH_NOARGS)
     {NULL, NULL, 0, NULL}
 };
 

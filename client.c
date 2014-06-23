@@ -84,36 +84,51 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
  * Task Management
  */
 
-static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
-    // Mandatory arguments
-    char* function_name;
-    char* workload;
-    int workload_size;
-    gearman_return_t ret;
-
-    // Optional arguments
-    char* unique = NULL;
-    static char* kwlist[] = {"function", "workload", "unique", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|s", kwlist,
-        &function_name, &workload, &workload_size, &unique)){
-        return NULL;
-    }
-    gearman_task_st* new_task = gearman_client_add_task(self->g_Client,
-                                                        NULL,
-                                                        self,
-                                                        function_name,
-                                                        unique,
-                                                        workload,
-                                                        workload_size,
-                                                        &ret);
-
-    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
-
-    python_task->g_Task = new_task;
-
-    return Py_BuildValue("(i, O)", ret, python_task);
+/**
+ * Add a task to be run in parallel.
+ *
+ * @param[in] function_name The name of the function to run.
+ * @param[in] workload The workload to pass to the function when it is run.
+ * @param[in] unique Optional unique job identifier
+ * @return A tuple of return code, Task structure. In the case of an error, Task
+ *  will be None
+ */
+#define CLIENT_ADD_TASK(TASKTYPE) \
+static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
+    /* Mandatory arguments*/ \
+    char* function_name; \
+    char* workload; \
+    int workload_size; \
+    gearman_return_t ret; \
+\
+    /* Optional arguments */ \
+    char* unique = NULL; \
+    static char* kwlist[] = {"function", "workload", "unique", NULL}; \
+\
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|s", kwlist, \
+        &function_name, &workload, &workload_size, &unique)){ \
+        return NULL; \
+    } \
+    gearman_task_st* new_task = gearman_client_add_task##TASKTYPE(self->g_Client, \
+                                                        NULL, \
+                                                        self, \
+                                                        function_name, \
+                                                        unique, \
+                                                        workload, \
+                                                        workload_size, \
+                                                        &ret); \
+\
+    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType); \
+    python_task->g_Task = new_task; \
+    return Py_BuildValue("(i, O)", ret, python_task); \
 }
+
+CLIENT_ADD_TASK()
+CLIENT_ADD_TASK(_background)
+CLIENT_ADD_TASK(_high)
+CLIENT_ADD_TASK(_high_background)
+CLIENT_ADD_TASK(_low)
+CLIENT_ADD_TASK(_low_background)
 
 static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
     // Mandatory arguments
