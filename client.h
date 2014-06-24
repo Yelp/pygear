@@ -212,6 +212,14 @@ PyDoc_STRVAR(pygear_client_set_fail_fn_doc,
 "@param[in] function Function to call. Must take one argument, which will be \n"
 "of type pygear.Task");
 
+static PyObject* pygear_client_timeout(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_timeout_doc,
+"See gearman_universal_timeout() for details.");
+
+static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_timeout_doc,
+"See gearman_universal_set_timeout() for details.");
+
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(clone,                    METH_NOARGS)
@@ -251,6 +259,9 @@ static PyMethodDef client_module_methods[] = {
     // Client Options
     _CLIENTMETHOD(set_options,              METH_KEYWORDS)
     _CLIENTMETHOD(get_options,              METH_NOARGS)
+    _CLIENTMETHOD(timeout,                  METH_NOARGS)
+    _CLIENTMETHOD(set_timeout,               METH_VARARGS)
+
     {NULL, NULL, 0, NULL}
 };
 

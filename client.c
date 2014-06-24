@@ -99,6 +99,26 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
+
+/**
+ * See gearman_universal_timeout() for details.
+ */
+static PyObject* pygear_client_timeout(pygear_ClientObject* self){
+    return Py_BuildValue("i", gearman_client_timeout(self->g_Client));
+}
+
+/**
+ * See gearman_universal_set_timeout() for details.
+ */
+static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* args){
+    int timeout;
+    if (!PyArg_ParseTuple(args, "i", &timeout)){
+        return NULL;
+    }
+    gearman_client_set_timeout(self->g_Client, timeout);
+    Py_RETURN_NONE;
+}
+
 /*
  * Task Management
  */
