@@ -1,12 +1,22 @@
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
+
+pygear = Extension(
+        "pygear",
+        sources = ["pygear.c"],
+        extra_link_args=["-lgearman"],
+        extra_compile_args=["-I/usr/include", "-I/usr/include/python2.7/"]
+    )
 
 setup(
-    ext_modules=[
-        Extension(
-            "pygear",
-            ["pygear.c"],
-            extra_link_args=["-lgearman"],
-            extra_compile_args=["-I/usr/include"]
-        ),
-    ],
+    name="pygear",
+    version="0.1",
+    ext_modules=[pygear],
+    test_requires = [
+        'pytest',
+        'mock',
+        'coverage',
+        'flake8',
+        'pylint',
+        'sphinx'
+    ]
 )

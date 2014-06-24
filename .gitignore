@@ -1,2 +1,7 @@
+.gitattributes
 build
 *.so
+tests/__pycache__
+*.pyc
+.tox
+pygear.egg-info/
