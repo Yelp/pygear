@@ -2,6 +2,8 @@
 #include <libgearman-1.0/gearman.h>
 #include <stdio.h>
 #include "structmember.h"
+#include "task.h"
+#include "exception.h"
 
 #ifndef PyMODINIT_FUNC
 #define PyMODINIT_FUNC void
@@ -150,7 +152,7 @@ PyDoc_STRVAR(pygear_client_set_options_doc,
 "disabled.\nAvailable options are:\n"
 "non_blocking, unbuffered_result, free_tasks and generate_unique");
 
-static PyObject* pygear_client_get_options(pygear_ClientObject* self, PyObject* args);
+static PyObject* pygear_client_get_options(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_get_options_doc,
 "Returns a dictionary of the current options set on the client");
 

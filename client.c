@@ -81,7 +81,10 @@ static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* a
         return NULL;
     }
     gearman_return_t result = gearman_client_add_server(self->g_Client, host, port);
-    return Py_BuildValue("i", result);
+    if (_pygear_check_and_raise_exn(result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args){
@@ -90,7 +93,10 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
         return NULL;
     }
     gearman_return_t result = gearman_client_add_servers(self->g_Client, servers);
-    return Py_BuildValue("i", result);
+    if (_pygear_check_and_raise_exn(result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /*
@@ -133,7 +139,10 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
 \
     pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType); \
     python_task->g_Task = new_task; \
-    return Py_BuildValue("(i, O)", ret, python_task); \
+    if (_pygear_check_and_raise_exn(ret)){ \
+        return NULL; \
+    } \
+    return Py_BuildValue("O", python_task); \
 }
 
 CLIENT_ADD_TASK()
@@ -190,8 +199,10 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
                                           workload, workload_size, \
                                           &result_size, \
                                           &ret_ptr); \
-\
-    return Py_BuildValue("(i, s#)", ret_ptr, work_result, result_size); \
+    if (_pygear_check_and_raise_exn(ret_ptr)){ \
+        return NULL; \
+    } \
+    return Py_BuildValue("s#", work_result, result_size); \
 }
 
 #define CLIENT_DO_BACKGROUND(DOTYPE) \
@@ -267,29 +278,35 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
     );
 
     if (new_task == NULL){
-        return Py_BuildValue("(i, s)", gearman_client_error(self->g_Client), "");
+        _pygear_check_and_raise_exn(gearman_client_errno(self->g_Client));
+        return NULL;
     }
 
     pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
     python_task->g_Task = new_task;
 
-    if (gearman_success(gearman_task_return(new_task))){
-        gearman_result_st *result= gearman_task_result(new_task);
-        int result_size = gearman_result_size(result);
-        const char* result_data = gearman_result_value(result);
-        return Py_BuildValue("(i, s#)", 0, result_data, result_size);
-    } else {
-        int worker_error = gearman_task_return(new_task);
-        return Py_BuildValue("(i, s)", worker_error, "");
+    if (_pygear_check_and_raise_exn(gearman_task_return(new_task))){
+        return NULL;
     }
+
+    gearman_result_st *result= gearman_task_result(new_task);
+    int result_size = gearman_result_size(result);
+    const char* result_data = gearman_result_value(result);
+    return Py_BuildValue("s#", result_data, result_size);
 }
 
 static PyObject* pygear_client_run_tasks(pygear_ClientObject* self){
-    return Py_BuildValue("i", gearman_client_run_tasks(self->g_Client));
+    if (_pygear_check_and_raise_exn(gearman_client_run_tasks(self->g_Client))){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject* pygear_client_wait(pygear_ClientObject* self){
-    return Py_BuildValue("i", gearman_client_wait(self->g_Client));
+    if (_pygear_check_and_raise_exn(gearman_client_wait(self->g_Client))){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /*
