@@ -58,6 +58,19 @@ void Client_dealloc(pygear_ClientObject* self){
  ********************
  */
 
+/**
+ * Clone a worker structure.
+ *
+ * @param[in] worker Caller allocated structure, or NULL to allocate one.
+ * @param[in] from Structure to use as a source to clone from.
+ * @return Same return as gearman_worker_create().
+ */
+static PyObject* pygear_client_clone(pygear_ClientObject* self){
+    pygear_ClientObject* python_client = (pygear_ClientObject*) _PyObject_New(&pygear_ClientType);
+    python_client->g_Client = gearman_client_clone(NULL, self->g_Client);
+    return Py_BuildValue("O", python_client);
+}
+
 /*
  * Server management
  */

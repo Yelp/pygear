@@ -33,6 +33,10 @@ int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds);
 void Client_dealloc(pygear_ClientObject* self);
 
 /* Method definitions */
+static PyObject* pygear_client_clone(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_clone_doc,
+"Clone a client structure.");
+
 static PyObject* pygear_client_add_server(pygear_ClientObject *self, PyObject *args);
 PyDoc_STRVAR(pygear_client_add_server_doc,
 "Add a list of job servers to a client. The format for the server list is:\n"
@@ -167,7 +171,10 @@ PyDoc_STRVAR(pygear_client_set_fail_fn_doc,
 
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
+    _CLIENTMETHOD(clone,                    METH_NOARGS)
+
     // Server management
+
     _CLIENTMETHOD(add_server,               METH_VARARGS)
     _CLIENTMETHOD(add_servers,              METH_VARARGS)
 
