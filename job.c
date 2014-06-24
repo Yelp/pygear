@@ -43,7 +43,11 @@ static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
     if (!PyArg_ParseTuple(args, "s#", &data, &data_size)){
         return NULL;
     }
-    return Py_BuildValue("i", gearman_job_send_data(self->g_Job, data, data_size));
+    gearman_return_t result = gearman_job_send_data(self->g_Job, data, data_size);
+    if (_pygear_check_and_raise_exn(result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /**
@@ -55,7 +59,11 @@ static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args)
     if (!PyArg_ParseTuple(args, "s#", &warning, &warning_size)){
         return NULL;
     }
-    return Py_BuildValue("i", gearman_job_send_warning(self->g_Job, warning, warning_size));
+    gearman_return_t result = gearman_job_send_warning(self->g_Job, warning, warning_size);
+    if (_pygear_check_and_raise_exn(result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /**
@@ -66,7 +74,11 @@ static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args){
     if (!PyArg_ParseTuple(args, "II", &numerator, &denominator)){
         return NULL;
     }
-    return Py_BuildValue("i", gearman_job_send_status(self->g_Job, numerator, denominator));
+    gearman_return_t result = gearman_job_send_status(self->g_Job, numerator, denominator);
+    if (_pygear_check_and_raise_exn(result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /**
@@ -79,7 +91,11 @@ static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args
     if (!PyArg_ParseTuple(args, "s#", &result, &result_size)){
         return NULL;
     }
-    return Py_BuildValue("i", gearman_job_send_complete(self->g_Job, result, result_size));
+    gearman_return_t gearman_result = gearman_job_send_complete(self->g_Job, result, result_size);
+    if (_pygear_check_and_raise_exn(gearman_result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /**
@@ -91,14 +107,22 @@ static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* arg
     if (!PyArg_ParseTuple(args, "s#", &exception, &exception_size)){
         return NULL;
     }
-    return Py_BuildValue("i", gearman_job_send_exception(self->g_Job, exception, exception_size));
+    gearman_return_t result = gearman_job_send_exception(self->g_Job, exception, exception_size);
+    if (_pygear_check_and_raise_exn(result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /**
  * Send fail status for a job.
  */
 static PyObject* pygear_job_send_fail(pygear_JobObject* self){
-    return Py_BuildValue("i", gearman_job_send_fail(self->g_Job));
+    gearman_return_t result = gearman_job_send_fail(self->g_Job);
+    if (_pygear_check_and_raise_exn(result)){
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
 
 /**
