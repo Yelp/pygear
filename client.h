@@ -69,28 +69,69 @@ PyDoc_STRVAR(pygear_client_add_task_doc,
 
 static PyObject* pygear_client_add_task_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_background_doc,
-"Add a background task to be run in parallel."
+"Add a background task to be run in parallel.\n"
 "See gearman_client_add_task() for details.");
 
 static PyObject* pygear_client_add_task_high(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_high_doc,
-"Add a high priority task to be run in parallel."
+"Add a high priority task to be run in parallel.\n"
 "See gearman_client_add_task() for details.");
 
 static PyObject* pygear_client_add_task_high_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_high_background_doc,
-"Add a high priority background task to be run in parallel."
+"Add a high priority background task to be run in parallel.\n"
 "See gearman_client_add_task() for details.");
 
 static PyObject* pygear_client_add_task_low(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_low_doc,
-"Add a low priority task to be run in parallel."
+"Add a low priority task to be run in parallel.\n"
 "See gearman_client_add_task() for details.");
 
 static PyObject* pygear_client_add_task_low_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_low_background_doc,
-"Add a low priority background task to be run in parallel."
+"Add a low priority background task to be run in parallel.\n"
 "See gearman_client_add_task() for details.");
+
+static PyObject* pygear_client_do(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_do_doc,
+"Run a single task synchronously and return a result.\n"
+"@param[in] function_name The name of the function to run.\n"
+"@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
+"@param[in] workload The workload to pass to the function when it is run.\n"
+"@return Tuple of standard gearman return value and result. In the case of\n"
+" GEARMAN_WORK_DATA, GEARMAN_WORK_WARNING, or GEARMAN_WORK_STATUS, the caller\n"
+" should take any actions to handle the event and then call this function\n"
+" again. This may happen multiple times until a GEARMAN_WORK_ERROR,\n"
+" GEARMAN_WORK_FAIL, or GEARMAN_SUCCESS (work complete) is returned. For\n"
+" GEARMAN_WORK_DATA or GEARMAN_WORK_WARNING, the result_size will be set to\n"
+" the intermediate data chunk being returned and an allocated data buffer\n"
+" will be returned. For GEARMAN_WORK_STATUS, the caller can use\n"
+" gearman_client_do_status() to get the current tasks status.");
+
+static PyObject* pygear_client_do_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_do_background_doc,
+"Run a background task and return an allocated result.\n"
+"See Client.do() for parameter and return information.");
+
+static PyObject* pygear_client_do_high(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_do_high_doc,
+"Run a high priority task and return an allocated result.\n"
+"See Client.do() for parameter and return information.");
+
+static PyObject* pygear_client_do_high_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_do_high_background_doc,
+"Run a high priority background task and return an allocated result.\n"
+"See Client.do() for parameter and return information.");
+
+static PyObject* pygear_client_do_low(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_do_low_doc,
+"Run a low priority task and return an allocated result.\n"
+"See Client.do() for parameter and return information.");
+
+static PyObject* pygear_client_do_low_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_client_do_low_background_doc,
+"Run a low priority background task and return an allocated result.\n"
+"See Client.do() for parameter and return information.");
 
 static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_execute_doc,
@@ -188,6 +229,12 @@ static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(execute,                  METH_VARARGS | METH_KEYWORDS)
     _CLIENTMETHOD(run_tasks,                METH_NOARGS)
     _CLIENTMETHOD(wait,                     METH_NOARGS)
+    _CLIENTMETHOD(do,                       METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(do_background,            METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(do_high,                  METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(do_high_background,       METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(do_low,                   METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(do_low_background,        METH_VARARGS | METH_KEYWORDS)
 
     // Callbacks
     _CLIENTMETHOD(set_workload_fn,          METH_VARARGS)

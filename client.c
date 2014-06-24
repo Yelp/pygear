@@ -143,6 +143,99 @@ CLIENT_ADD_TASK(_high_background)
 CLIENT_ADD_TASK(_low)
 CLIENT_ADD_TASK(_low_background)
 
+
+/**
+ * Run a single task and return an allocated result.
+ *
+ * @param[in] function_name The name of the function to run.
+ * @param[in] unique Optional unique job identifier, or NULL for a new UUID.
+ * @param[in] workload_size Size of the workload.
+ * @param[in] workload The workload to pass to the function when it is run.
+ * @param[out] result_size The size of the data being returned.
+ * @param[out] ret_ptr Standard gearman return value. In the case of
+ *  GEARMAN_WORK_DATA, GEARMAN_WORK_WARNING, or GEARMAN_WORK_STATUS, the caller
+ *  should take any actions to handle the event and then call this function
+ *  again. This may happen multiple times until a GEARMAN_WORK_ERROR,
+ *  GEARMAN_WORK_FAIL, or GEARMAN_SUCCESS (work complete) is returned. For
+ *  GEARMAN_WORK_DATA or GEARMAN_WORK_WARNING, the result_size will be set to
+ *  the intermediate data chunk being returned and an allocated data buffer
+ *  will be returned. For GEARMAN_WORK_STATUS, the caller can use
+ *  gearman_client_do_status() to get the current tasks status.
+ * @return The result allocated by the library, this needs to be freed when the
+ *  caller is done using it.
+ */
+
+#define CLIENT_DO(DOTYPE) \
+static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
+    /* Mandatory arguments*/ \
+    char* function_name; \
+    char* workload; \
+    int workload_size; \
+\
+    /* Optional arguments */ \
+    char* unique = NULL; \
+    static char* kwlist[] = {"function", "workload", "unique", NULL}; \
+\
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|s", kwlist, \
+        &function_name, &workload, &workload_size, &unique)){ \
+        return NULL; \
+    } \
+\
+    size_t result_size; \
+    gearman_return_t ret_ptr; \
+\
+    void* work_result = gearman_client_do##DOTYPE(self->g_Client, \
+                                          function_name, \
+                                          unique, \
+                                          workload, workload_size, \
+                                          &result_size, \
+                                          &ret_ptr); \
+\
+    return Py_BuildValue("(i, s#)", ret_ptr, work_result, result_size); \
+}
+
+#define CLIENT_DO_BACKGROUND(DOTYPE) \
+static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
+    /* Mandatory arguments*/ \
+    char* function_name; \
+    PyObject* workload; \
+    char* workload_string; \
+    Py_ssize_t workload_size; \
+\
+    /* Optional arguments */ \
+    char* unique = NULL; \
+    static char* kwlist[] = {"function", "workload", "unique", NULL}; \
+\
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|s", kwlist, \
+        &function_name, &workload, &unique)){ \
+        return NULL; \
+    } \
+\
+    char* job_handle = malloc(sizeof(char) * GEARMAN_JOB_HANDLE_SIZE); \
+    PyObject* pickled_input = PyObject_CallMethod(self->pickle, "dumps", "O", workload); \
+    PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
+\
+    gearman_return_t work_result = gearman_client_do##DOTYPE##_background( \
+        self->g_Client, \
+        function_name, \
+        unique, \
+        workload_string, workload_size, \
+        job_handle); \
+    if (_pygear_check_and_raise_exn(work_result)){ \
+        return NULL; \
+    } \
+    return Py_BuildValue("i", work_result); \
+}
+
+CLIENT_DO()
+CLIENT_DO(_high)
+CLIENT_DO(_low)
+
+CLIENT_DO_BACKGROUND()
+CLIENT_DO_BACKGROUND(_high)
+CLIENT_DO_BACKGROUND(_low)
+
+
 static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
     // Mandatory arguments
     char* function_name;
