@@ -25,6 +25,7 @@ typedef struct {
     PyObject* cb_complete;
     PyObject* cb_exception;
     PyObject* cb_fail;
+    PyObject* cb_log;
 } pygear_ClientObject;
 
 PyDoc_STRVAR(client_module_docstring, "Represents a Gearman client");
@@ -93,6 +94,13 @@ static PyObject* pygear_client_add_task_low_background(pygear_ClientObject* self
 PyDoc_STRVAR(pygear_client_add_task_low_background_doc,
 "Add a low priority background task to be run in parallel.\n"
 "See gearman_client_add_task() for details.");
+
+static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_add_task_status_doc,
+"Add task to get the status for a backgound task in parallel.\n"
+"@param[in] job_handle The job handle to get status for.\n"
+"@raises Pygear exception on failure\n"
+"@return On success, a new Task instance");
 
 static PyObject* pygear_client_do(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_do_doc,
@@ -220,6 +228,63 @@ static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* 
 PyDoc_STRVAR(pygear_client_set_timeout_doc,
 "See gearman_universal_set_timeout() for details.");
 
+static PyObject* pygear_client_error(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_error_doc,
+"See gearman_error() for details.");
+
+static PyObject* pygear_client_error_code(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_error_code_doc,
+"See gearman_error() for details.");
+
+static PyObject* pygear_client_errno(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_errno_doc,
+"See gearman_errno() for details.");
+
+static PyObject* pygear_client_set_log_fn(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_log_fn_doc,
+"See gearman_set_log_fn() for details.");
+
+static PyObject* pygear_client_remove_servers(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_remove_servers_doc,
+"Remove all servers currently associated with the client.");
+
+static PyObject* pygear_client_do_job_handle(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_do_job_handle_doc,
+"Get the job handle for the running task. This should be used between\n"
+"repeated gearman_client_do() (and related) calls to get information.\n");
+
+static PyObject* pygear_client_do_status(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_do_status_doc,
+"Get the completion progress of a task.\n"
+"Retyrns a tuple (numerator, denominator)");
+
+static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_job_status_doc,
+"Get the status for a backgound job by job handle.\n"
+"Returns a dictionary with the following:\n"
+"is_known Whether or not the task is known.\n"
+"is_running Whether or not the task is running.\n"
+"numerator Progress numerator.\n"
+"denominator Progress denominator.\n");
+
+static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_unique_status_doc,
+"Get the status for a backgound job by unique.\n"
+"Returns a dictionary with the following:\n"
+"is_known Whether or not the task is known.\n"
+"is_running Whether or not the task is running.\n"
+"numerator Progress numerator.\n"
+"denominator Progress denominator.\n");
+
+static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_echo_doc,
+"Send data to all job servers to see if they echo it back. This is a test\n"
+"function to see if the job servers are responding properly.\n");
+
+static PyObject* pygear_client_clear_fn(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_clear_fn_doc,
+"Clear all task callback functions.");
+
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(clone,                    METH_NOARGS)
@@ -228,6 +293,8 @@ static PyMethodDef client_module_methods[] = {
 
     _CLIENTMETHOD(add_server,               METH_VARARGS)
     _CLIENTMETHOD(add_servers,              METH_VARARGS)
+    _CLIENTMETHOD(remove_servers,           METH_NOARGS)
+    _CLIENTMETHOD(echo,                     METH_VARARGS)
 
     // Task management
     _CLIENTMETHOD(add_task,                 METH_VARARGS | METH_KEYWORDS)
@@ -236,6 +303,7 @@ static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(add_task_high_background, METH_VARARGS | METH_KEYWORDS)
     _CLIENTMETHOD(add_task_low,             METH_VARARGS | METH_KEYWORDS)
     _CLIENTMETHOD(add_task_low_background,  METH_VARARGS | METH_KEYWORDS)
+    _CLIENTMETHOD(add_task_status,          METH_VARARGS)
     _CLIENTMETHOD(execute,                  METH_VARARGS | METH_KEYWORDS)
     _CLIENTMETHOD(run_tasks,                METH_NOARGS)
     _CLIENTMETHOD(wait,                     METH_NOARGS)
@@ -246,6 +314,17 @@ static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(do_low,                   METH_VARARGS | METH_KEYWORDS)
     _CLIENTMETHOD(do_low_background,        METH_VARARGS | METH_KEYWORDS)
 
+    // Errors
+    _CLIENTMETHOD(error,                    METH_NOARGS)
+    _CLIENTMETHOD(error_code,               METH_NOARGS)
+    _CLIENTMETHOD(errno,                    METH_NOARGS)
+
+    // Job management
+    _CLIENTMETHOD(do_job_handle,            METH_VARARGS)
+    _CLIENTMETHOD(do_status,                METH_NOARGS)
+    _CLIENTMETHOD(job_status,               METH_VARARGS)
+    _CLIENTMETHOD(unique_status,            METH_VARARGS)
+
     // Callbacks
     _CLIENTMETHOD(set_workload_fn,          METH_VARARGS)
     _CLIENTMETHOD(set_created_fn,           METH_VARARGS)
@@ -255,12 +334,14 @@ static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(set_complete_fn,          METH_VARARGS)
     _CLIENTMETHOD(set_exception_fn,         METH_VARARGS)
     _CLIENTMETHOD(set_fail_fn,              METH_VARARGS)
+    _CLIENTMETHOD(clear_fn,                 METH_NOARGS)
+    _CLIENTMETHOD(set_log_fn,               METH_VARARGS)
 
     // Client Options
     _CLIENTMETHOD(set_options,              METH_KEYWORDS)
     _CLIENTMETHOD(get_options,              METH_NOARGS)
     _CLIENTMETHOD(timeout,                  METH_NOARGS)
-    _CLIENTMETHOD(set_timeout,               METH_VARARGS)
+    _CLIENTMETHOD(set_timeout,              METH_VARARGS)
 
     {NULL, NULL, 0, NULL}
 };

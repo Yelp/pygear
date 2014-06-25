@@ -47,6 +47,15 @@ PyMODINIT_FUNC initpygear(void){
     Py_INCREF(&pygear_WorkerType);
     PyModule_AddObject(m, "Worker", (PyObject *)&pygear_WorkerType);
 
+    // Enum replacements
+    PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_NEVER", GEARMAN_VERBOSE_NEVER);
+    PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_FATAL", GEARMAN_VERBOSE_FATAL);
+    PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_ERROR", GEARMAN_VERBOSE_ERROR);
+    PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_INFO",  GEARMAN_VERBOSE_INFO);
+    PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_DEBUG", GEARMAN_VERBOSE_DEBUG);
+    PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_CRAZY", GEARMAN_VERBOSE_CRAZY);
+    PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_MAX",   GEARMAN_VERBOSE_MAX);
+
     // Exception init
     INIT_EXN(SHUTDOWN);
     INIT_EXN(SHUTDOWN_GRACEFUL);
