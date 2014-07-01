@@ -226,19 +226,10 @@ static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t ve
 
     PyObject* python_cb_method = (PyObject*) context;
 
-    //if (!PyCallable_Check(python_cb_method)){
-    //  fprintf(stderr, "Worker logging callback is not an instance of Callable!\n");
-    //  PyGILState_Release(gstate);
-    //  return;
-    //}
-
-    fprintf(stderr, "Calling log cb %p with line `%s`\n", python_cb_method, line);
     PyObject* python_line = PyString_FromString(line);
     PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_line);
     if (!callback_return){
-        fprintf(stderr, "Logging function failed!\n");
-        PyObject* exn = PyErr_Occurred();
-        if (exn){
+        if (PyErr_Occurred()){
             PyErr_Print();
         }
     }
@@ -253,7 +244,6 @@ static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* a
         return NULL;
     }
     Py_INCREF(logging_cb);
-    fprintf(stderr, "Setting gearman worker log method to %p loglevel %d\n", logging_cb, log_level);
     gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, logging_cb, log_level);
     Py_RETURN_NONE;
 }
@@ -474,11 +464,13 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     pygear_WorkerObject* worker = ((pygear_WorkerObject*) context);
     const char* job_func_name = gearman_job_function_name(gear_job);
-    PyObject* python_cb_method;
+    PyObject* python_cb_method = PyDict_GetItemString(worker->g_FunctionMap, job_func_name);
 
-    if ((python_cb_method = PyDict_GetItemString(worker->g_FunctionMap, job_func_name)) == NULL){
-        fprintf(stderr, "Worker does not support method %s\n", job_func_name);
+    if (python_cb_method == NULL){
+        PyErr_SetString(PyExc_SystemError, "Worker does not support method %s\n");
+        PyGILState_Release(gstate);
         *ret_ptr = GEARMAN_FAIL;
+        return NULL;
     }
 
     // Bind the job into a python representation, and call through the python
@@ -519,12 +511,16 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
         PyObject* pickled_data = PyObject_CallMethod(worker->pickle, "dumps", "(O)", error_tuple);
         if (!pickled_data){
             PyErr_SetString(PyExc_SystemError, "Failed to pickle exception data\n");
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
             return NULL;
         }
 
         char* c_data; Py_ssize_t c_data_size;
         if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
             PyErr_SetString(PyExc_SystemError, "Failed to stringify pickled exception data\n");
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
             return NULL;
         }
 
@@ -536,13 +532,18 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
         // Try to pickle the return from the function
         PyObject* pickled_result = PyObject_CallMethod(worker->pickle, "dumps", "O", callback_return);
         if (!pickled_result){
-            fprintf(stderr, "Failed to pickle worker result!");
+            PyErr_SetString(PyExc_SystemError, "Failed to pickle worker result data\n");
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
         } else {
             Py_ssize_t len;
             char* buffer;
             PyString_AsStringAndSize(pickled_result, &buffer, &len);
             if (_pygear_check_and_raise_exn(gearman_job_send_complete(gear_job, buffer, len))){
                 PyErr_Print();
+            } else {
+                *ret_ptr = GEARMAN_SUCCESS;
             }
         }
     }
@@ -575,7 +576,6 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
         return NULL;
     }
 
-    fprintf(stderr, "Registering function %s as pyobject %p\n", function_name, callback_method);
     Py_INCREF(callback_method);
     PyDict_SetItemString(self->g_FunctionMap, function_name, callback_method);
 

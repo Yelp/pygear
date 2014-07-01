@@ -251,10 +251,7 @@ static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* 
 static void _pygear_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context){
     pygear_ClientObject* client = (pygear_ClientObject*) context;
     PyGILState_STATE gstate = PyGILState_Ensure();
-    PyObject* callback_return = PyObject_CallFunction(client->cb_log, "s", line);
-    if (callback_return == NULL){
-        fprintf(stderr, "Callback function failed!\n");
-    }
+    PyObject_CallFunction(client->cb_log, "s", line);
     PyGILState_Release(gstate);
 }
 
@@ -691,7 +688,9 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
     python_task->g_Task = gear_task; \
     PyObject* callback_return = PyObject_CallFunction(client->cb_##CB, "O", python_task); \
     if (!callback_return){ \
-        fprintf(stderr, "Callback function failed!\n"); \
+        if (PyErr_Occurred()){ \
+            PyErr_Print(); \
+        } \
     } \
     /* Release the thread */ \
     PyGILState_Release(gstate); \
