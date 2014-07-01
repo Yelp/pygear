@@ -25,7 +25,7 @@ def test_client_timeout(c):
 
 def test_client_add_servers(c):
     with pytest.raises(pygear.GETADDRINFO):
-        c.add_servers("invalidhosturi")
+        c.add_servers(["invalidhosturi"])
     with pytest.raises(pygear.GETADDRINFO):
         c.add_server("invalidhosturi", 4730)
 

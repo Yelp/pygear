@@ -302,13 +302,28 @@ static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* a
  * @return Standard gearman return value.
  */
 static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args){
-    char* servers;
-    if (!PyArg_ParseTuple(args, "z", &servers)){
+    PyObject* server_list;
+    if (!PyArg_ParseTuple(args, "O", &server_list)){
         return NULL;
     }
-    gearman_return_t result = gearman_client_add_servers(self->g_Client, servers);
-    if (_pygear_check_and_raise_exn(result)){
+    if (!PyList_Check(server_list)){
+        PyTypeObject* arg_type = (PyTypeObject*) PyObject_Type(server_list);
+        char* err_base = "Client.add_servers expected list, got ";
+        char* err_string = malloc(sizeof(char) * (strlen(err_base) + strlen(arg_type->tp_name) + 1));
+        sprintf(err_string, "%s%s", err_base, arg_type->tp_name);
+        PyErr_SetString(PyExc_TypeError, err_string);
         return NULL;
+    }
+
+    Py_ssize_t num_servers = PyList_Size(server_list);
+    Py_ssize_t i;
+    for (i=0; i < num_servers; i++){
+        char* srv_string = PyString_AsString(PyList_GetItem(server_list, i));
+        gearman_return_t result = gearman_client_add_servers(self->g_Client, srv_string);
+
+        if (_pygear_check_and_raise_exn(result)){
+            return NULL;
+        }
     }
     Py_RETURN_NONE;
 }

@@ -46,7 +46,7 @@ def test_worker_unregister_all(w):
 
 def test_worker_add_servers(w):
     with pytest.raises(pygear.GETADDRINFO):
-        w.add_servers("invalidhosturi")
+        w.add_servers(["invalidhosturi"])
 
 def test_clone(w):
     w.set_timeout(30)

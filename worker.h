@@ -68,10 +68,10 @@ PyDoc_STRVAR(pygear_worker_add_server_doc,
 static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_add_servers_doc,
 "Add a list of job servers to a worker. The format for the server list is:\n"
-"SERVER[:PORT][,SERVER[:PORT]]...\n"
+"[ 'SERVER[:PORT]', [,SERVER[:PORT]]... ]\n"
 "Some examples are:\n"
-"10.0.0.1,10.0.0.2,10.0.0.3\n"
-"localhost234,jobserver2.domain.com:7003,10.0.0.3\n"
+"['10.0.0.1, '10.0.0.2', '10.0.0.3']\n"
+"['localhost234', 'jobserver2.domain.com:7003', '10.0.0.3']\n"
 "@param[in] servers Server list described above.\n"
 "@raises Pygear exception on failure.");
 
