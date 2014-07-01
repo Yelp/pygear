@@ -17,7 +17,8 @@ PyObject* Client_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 
 int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
     self->g_Client = gearman_client_create(NULL);
-    if (self->g_Client == NULL) {
+    self->pickle = PyImport_ImportModule("pickle");
+    if (self->g_Client == NULL || self->pickle == NULL) {
         return 1;
     }
 
@@ -49,6 +50,8 @@ void Client_dealloc(pygear_ClientObject* self){
     Py_XDECREF(self->cb_complete);
     Py_XDECREF(self->cb_exception);
     Py_XDECREF(self->cb_fail);
+
+    Py_XDECREF(self->pickle);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -379,31 +382,38 @@ static PyObject* pygear_client_wait(pygear_ClientObject* self){
 static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
     /* Mandatory arguments*/ \
     char* function_name; \
-    char* workload; \
-    int workload_size; \
+    PyObject* workload; \
+    char* workload_string; \
+    Py_ssize_t workload_size; \
 \
     /* Optional arguments */ \
     char* unique = NULL; \
     static char* kwlist[] = {"function", "workload", "unique", NULL}; \
 \
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|s", kwlist, \
-        &function_name, &workload, &workload_size, &unique)){ \
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|s", kwlist, \
+        &function_name, &workload, &unique)){ \
         return NULL; \
     } \
 \
     size_t result_size; \
     gearman_return_t ret_ptr; \
+    PyObject* pickled_input = PyObject_CallMethod(self->pickle, "dumps", "O", workload); \
+    PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
 \
     void* work_result = gearman_client_do##DOTYPE(self->g_Client, \
                                           function_name, \
                                           unique, \
-                                          workload, workload_size, \
+                                          workload_string, workload_size, \
                                           &result_size, \
                                           &ret_ptr); \
     if (_pygear_check_and_raise_exn(ret_ptr)){ \
         return NULL; \
     } \
-    return Py_BuildValue("s#", work_result, result_size); \
+    PyObject* py_result = Py_BuildValue("s#", work_result, result_size); \
+    if (py_result == Py_None){ \
+        Py_RETURN_NONE; \
+    } \
+    return PyObject_CallMethod(self->pickle, "loads", "O", py_result); \
 }
 
 #define CLIENT_DO_BACKGROUND(DOTYPE) \
@@ -577,24 +587,26 @@ static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args){
 static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
     /* Mandatory arguments*/ \
     char* function_name; \
-    char* workload; \
-    int workload_size; \
+    PyObject* workload; \
     gearman_return_t ret; \
 \
     /* Optional arguments */ \
     char* unique = NULL; \
     static char* kwlist[] = {"function", "workload", "unique", NULL}; \
 \
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|s", kwlist, \
-        &function_name, &workload, &workload_size, &unique)){ \
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|s", kwlist, \
+        &function_name, &workload, &unique)){ \
         return NULL; \
     } \
+    PyObject* pickled_input = PyObject_CallMethod(self->pickle, "dumps", "O", workload); \
+    char* workload_string; Py_ssize_t workload_size; \
+    PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
     gearman_task_st* new_task = gearman_client_add_task##TASKTYPE(self->g_Client, \
                                                         NULL, \
                                                         self, \
                                                         function_name, \
                                                         unique, \
-                                                        workload, \
+                                                        workload_string, \
                                                         workload_size, \
                                                         &ret); \
 \

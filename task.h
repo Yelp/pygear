@@ -15,6 +15,7 @@
 typedef struct {
     PyObject_HEAD
     struct gearman_task_st* g_Task;
+    PyObject* pickle;
 } pygear_TaskObject;
 
 PyDoc_STRVAR(task_module_docstring, "Represents a Gearman task");

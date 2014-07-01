@@ -11,12 +11,13 @@ PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
     if (self != NULL) {
         self->g_Job = NULL;
     }
-
+    self->pickle = NULL;
     return (PyObject *)self;
 }
 
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds){
     self->g_Job = NULL;
+    self->pickle = PyImport_ImportModule("pickle");
     return 0;
 }
 
@@ -25,7 +26,7 @@ void Job_dealloc(pygear_JobObject* self){
         gearman_job_free(self->g_Job);
         self->g_Job = NULL;
     }
-
+    Py_XDECREF(self->pickle);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -150,10 +151,11 @@ static PyObject* pygear_job_unique(pygear_JobObject* self){
  * Get a the workload for a job.
  */
 static PyObject* pygear_job_workload(pygear_JobObject* self){
-    return Py_BuildValue("s#",
-        gearman_job_workload(self->g_Job),
-        gearman_job_workload_size(self->g_Job)
-    );
+    const char* job_workload = gearman_job_workload(self->g_Job);
+    size_t job_size = gearman_job_workload_size(self->g_Job);
+    PyObject* py_result = Py_BuildValue("s#", job_workload, job_size);
+    PyObject* py_workload = PyObject_CallMethod(self->pickle, "loads", "S", py_result);
+    return py_workload;
 }
 
 /**

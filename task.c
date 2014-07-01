@@ -16,7 +16,11 @@ PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 }
 
 int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
+    self->pickle = PyImport_ImportModule("pickle");
     self->g_Task = NULL;
+    if (!self->pickle){
+        return 1;
+    }
     return 0;
 }
 
@@ -25,7 +29,7 @@ void Task_dealloc(pygear_TaskObject* self){
         gearman_task_free(self->g_Task);
         self->g_Task = NULL;
     }
-
+    Py_XDECREF(self->pickle);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -76,7 +80,8 @@ static PyObject* pygear_task_data_size(pygear_TaskObject* self){
 }
 
 static PyObject* pygear_task_result(pygear_TaskObject* self){
-    return Py_BuildValue("s#",
-        (char *)gearman_task_data(self->g_Task),
-        gearman_task_data_size(self->g_Task));
+    const char* task_result = gearman_task_data(self->g_Task);
+    size_t result_size = gearman_task_data_size(self->g_Task);
+    PyObject* py_result = Py_BuildValue("s#", task_result, result_size);
+    return PyObject_CallMethod(self->pickle, "loads", "O", py_result);
 }

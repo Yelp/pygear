@@ -19,7 +19,8 @@ PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds){
     self->g_Worker = gearman_worker_create(NULL);
     self->g_FunctionMap = PyDict_New();
-    if (self->g_Worker == NULL || self->g_FunctionMap == NULL){
+    self->pickle = PyImport_ImportModule("pickle");
+    if (self->g_Worker == NULL || self->g_FunctionMap == NULL || self->pickle == NULL){
         return 1;
     }
     return 0;
@@ -32,6 +33,7 @@ void Worker_dealloc(pygear_WorkerObject* self){
     }
 
     Py_XDECREF(self->g_FunctionMap);
+    Py_XDECREF(self->pickle);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -446,12 +448,24 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     // Bind the job into a python representation, and call through the python
     // callback method
-    pygear_JobObject* python_job = (pygear_JobObject*) _PyObject_New(&pygear_JobType);
+    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
     python_job->g_Job = gear_job;
 
     PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
     if (!callback_return){ \
         fprintf(stderr, "Callback function failed!\n");
+    } else {
+        // Try to pickle the return from the function
+        PyObject* pickled_result = PyObject_CallMethod(worker->pickle, "dumps", "O", callback_return);
+        if (!pickled_result){
+            fprintf(stderr, "Failed to pickle worker result!");
+        } else {
+            Py_ssize_t len;
+            char* buffer;
+            PyString_AsStringAndSize(pickled_result, &buffer, &len);
+            gearman_job_send_complete(gear_job, buffer, len);
+        }
     }
 
     PyGILState_Release(gstate);
