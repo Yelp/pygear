@@ -488,8 +488,50 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     python_job->g_Job = gear_job;
 
     PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
-    if (!callback_return){ \
-        fprintf(stderr, "Callback function failed!\n");
+    if (!callback_return){
+        if (!PyErr_Occurred()){
+            // If the callback returned NULL but did not set an exception,
+            // set a generic one to be sent back.
+            PyErr_SetObject(
+                PyGearExn_ERROR,
+                PyString_FromFormat(
+                    "Callback method for %s failed, but threw no exception",
+                    job_func_name
+                )
+            );
+        }
+        PyObject *ptype, *pvalue, *ptraceback;
+        PyErr_Fetch(&ptype, &pvalue, &ptraceback);
+        Py_XINCREF(ptype);
+        Py_XINCREF(pvalue);
+        Py_XINCREF(ptraceback);
+        PyErr_Restore(ptype, pvalue, ptraceback);
+
+        // The value and traceback object may be NULL even when the type object is not.
+        // NULL values would break Py_BuildValue below, so switch them to None
+        if (!pvalue){ pvalue = Py_None; }
+        if (!ptraceback){ ptraceback = Py_None; }
+
+        PyObject* traceback = PyImport_ImportModule("traceback");
+        PyObject* string_traceback = PyObject_CallMethod(traceback, "format_tb", "O", ptraceback);
+
+        PyObject* error_tuple = Py_BuildValue("(O, O, O)", ptype, pvalue, string_traceback);
+        PyObject* pickled_data = PyObject_CallMethod(worker->pickle, "dumps", "(O)", error_tuple);
+        if (!pickled_data){
+            PyErr_SetString(PyExc_SystemError, "Failed to pickle exception data\n");
+            return NULL;
+        }
+
+        char* c_data; Py_ssize_t c_data_size;
+        if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+            PyErr_SetString(PyExc_SystemError, "Failed to stringify pickled exception data\n");
+            return NULL;
+        }
+
+        if (_pygear_check_and_raise_exn(gearman_job_send_exception(gear_job, c_data, c_data_size))){
+            PyErr_Print();
+        }
+
     } else {
         // Try to pickle the return from the function
         PyObject* pickled_result = PyObject_CallMethod(worker->pickle, "dumps", "O", callback_return);
@@ -499,7 +541,9 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             Py_ssize_t len;
             char* buffer;
             PyString_AsStringAndSize(pickled_result, &buffer, &len);
-            gearman_job_send_complete(gear_job, buffer, len);
+            if (_pygear_check_and_raise_exn(gearman_job_send_complete(gear_job, buffer, len))){
+                PyErr_Print();
+            }
         }
     }
 

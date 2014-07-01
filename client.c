@@ -22,6 +22,9 @@ int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
         return 1;
     }
 
+    const char *EXCEPTIONS="exceptions";
+    gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
+
     // Callbacks
     self->cb_workload = NULL;
     self->cb_created = NULL;
