@@ -50,7 +50,9 @@ void Worker_dealloc(pygear_WorkerObject* self){
  * @return Same return as gearman_worker_create().
  */
 static PyObject* pygear_worker_clone(pygear_WorkerObject* self){
-    pygear_WorkerObject* python_worker = (pygear_WorkerObject*) _PyObject_New(&pygear_WorkerType);
+    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    pygear_WorkerObject* python_worker = (pygear_WorkerObject*) PyObject_CallObject((PyObject *) &pygear_WorkerType, argList);
+
     python_worker->g_Worker = gearman_worker_clone(NULL, self->g_Worker);
     return Py_BuildValue("O", python_worker);
 }
@@ -427,7 +429,8 @@ static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
         return NULL;
     }
 
-    pygear_JobObject* python_job = (pygear_JobObject*) _PyObject_New(&pygear_JobType);
+    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
     python_job->g_Job = new_job;
 
     return Py_BuildValue("O", python_job);

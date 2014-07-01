@@ -97,7 +97,8 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
         return NULL;
     }
 
-    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
+    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList);
     python_task->g_Task = new_task;
 
     if (_pygear_check_and_raise_exn(gearman_task_return(new_task))){
@@ -118,7 +119,8 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
  * @return Same return as gearman_client_create().
  */
 static PyObject* pygear_client_clone(pygear_ClientObject* self){
-    pygear_ClientObject* python_client = (pygear_ClientObject*) _PyObject_New(&pygear_ClientType);
+    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    pygear_ClientObject* python_client = (pygear_ClientObject*) PyObject_CallObject((PyObject *) &pygear_ClientType, argList);
     python_client->g_Client = gearman_client_clone(NULL, self->g_Client);
     return Py_BuildValue("O", python_client);
 }
@@ -610,7 +612,8 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
                                                         workload_size, \
                                                         &ret); \
 \
-    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType); \
+    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
+    pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
     python_task->g_Task = new_task; \
     if (_pygear_check_and_raise_exn(ret)){ \
         return NULL; \
@@ -680,7 +683,8 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
     } \
     /* Need to lock the GIL to avoid undefined behaviour */ \
     PyGILState_STATE gstate = PyGILState_Ensure(); \
-    pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType); \
+    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
+    pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
     python_task->g_Task = gear_task; \
     PyObject* callback_return = PyObject_CallFunction(client->cb_##CB, "O", python_task); \
     if (!callback_return){ \
