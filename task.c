@@ -82,6 +82,20 @@ static PyObject* pygear_task_data_size(pygear_TaskObject* self){
 static PyObject* pygear_task_result(pygear_TaskObject* self){
     const char* task_result = gearman_task_data(self->g_Task);
     size_t result_size = gearman_task_data_size(self->g_Task);
+
+    if (!task_result){
+        Py_RETURN_NONE;
+    }
+
     PyObject* py_result = Py_BuildValue("s#", task_result, result_size);
-    return PyObject_CallMethod(self->pickle, "loads", "O", py_result);
+    if (!py_result){
+        PyErr_SetString(PyExc_SystemError, "Failed to build value from Task result\n");
+        return NULL;
+    }
+    PyObject* unpickled_result = PyObject_CallMethod(self->pickle, "loads", "O", py_result);
+    if (!unpickled_result){
+        PyErr_SetString(PyExc_SystemError," Failed to unpickle internal Task data\n");
+        return NULL;
+    }
+    return unpickled_result;
 }

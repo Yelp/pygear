@@ -39,12 +39,21 @@ void Job_dealloc(pygear_JobObject* self){
  * Send data for a running job.
  */
 static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
-    char* data;
-    unsigned data_size;
-    if (!PyArg_ParseTuple(args, "s#", &data, &data_size)){
+    PyObject* data;
+    if (!PyArg_ParseTuple(args, "O", &data)){
         return NULL;
     }
-    gearman_return_t result = gearman_job_send_data(self->g_Job, data, data_size);
+    PyObject* pickled_data = PyObject_CallMethod(self->pickle, "dumps", "O", data);
+    if (!pickled_data){
+        PyErr_SetString(PyExc_SystemError, "Could not pickle job_data data for transport\n");
+        return NULL;
+    }
+    char* c_data; Py_ssize_t c_data_size;
+    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+        PyErr_SetString(PyExc_SystemError, "Failed to convert pickled data to C string");
+        return NULL;
+    }
+    gearman_return_t result = gearman_job_send_data(self->g_Job, c_data, c_data_size);
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
@@ -55,12 +64,21 @@ static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
  * Send warning for a running job.
  */
 static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args){
-    char* warning;
-    unsigned warning_size;
-    if (!PyArg_ParseTuple(args, "s#", &warning, &warning_size)){
+    PyObject* data;
+    if (!PyArg_ParseTuple(args, "O", &data)){
         return NULL;
     }
-    gearman_return_t result = gearman_job_send_warning(self->g_Job, warning, warning_size);
+    PyObject* pickled_data = PyObject_CallMethod(self->pickle, "dumps", "O", data);
+    if (!pickled_data){
+        PyErr_SetString(PyExc_SystemError, "Could not pickle job_warning data for transport\n");
+        return NULL;
+    }
+    char* c_data; Py_ssize_t c_data_size;
+    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+        PyErr_SetString(PyExc_SystemError, "Failed to convert pickled warning data to C string");
+        return NULL;
+    }
+    gearman_return_t result = gearman_job_send_warning(self->g_Job, c_data, c_data_size);
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
@@ -86,13 +104,21 @@ static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args){
  * Send result and complete status for a job.
  */
 static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args){
-    fprintf(stderr, "Called job_send_complete\n");
-    char* result;
-    unsigned result_size;
-    if (!PyArg_ParseTuple(args, "s#", &result, &result_size)){
+    PyObject* result;
+    if (!PyArg_ParseTuple(args, "O", &result)){
         return NULL;
     }
-    gearman_return_t gearman_result = gearman_job_send_complete(self->g_Job, result, result_size);
+    PyObject* pickled_result = PyObject_CallMethod(self->pickle, "dumps", "O", result);
+    if (!pickled_result){
+        PyErr_SetString(PyExc_SystemError, "Could not pickle job_complete data for transport\n");
+        return NULL;
+    }
+    char* c_result; Py_ssize_t c_result_size;
+    if (PyString_AsStringAndSize(pickled_result, &c_result, &c_result_size) == -1){
+        PyErr_SetString(PyExc_SystemError, "Failed to convert pickled complete data to C string");
+        return NULL;
+    }
+    gearman_return_t gearman_result = gearman_job_send_complete(self->g_Job, c_result, c_result_size);
     if (_pygear_check_and_raise_exn(gearman_result)){
         return NULL;
     }
@@ -103,12 +129,22 @@ static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args
  * Send exception for a running job.
  */
 static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* args){
-    char* exception;
-    unsigned exception_size;
-    if (!PyArg_ParseTuple(args, "s#", &exception, &exception_size)){
+    PyObject* data;
+    if (!PyArg_ParseTuple(args, "O", &data)){
         return NULL;
     }
-    gearman_return_t result = gearman_job_send_exception(self->g_Job, exception, exception_size);
+    PyObject* pickled_data = PyObject_CallMethod(self->pickle, "dumps", "O", data);
+    if (!pickled_data){
+        PyErr_SetString(PyExc_SystemError, "Could not pickle job_exception data for transport\n");
+        return NULL;
+    }
+
+    char* c_data; Py_ssize_t c_data_size;
+    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+        PyErr_SetString(PyExc_SystemError, "Failed to convert pickled exception data to C string");
+        return NULL;
+    }
+    gearman_return_t result = gearman_job_send_exception(self->g_Job, c_data, c_data_size);
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
