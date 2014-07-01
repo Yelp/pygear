@@ -17,8 +17,7 @@ typedef struct {
     struct gearman_client_st* g_Client;
 } pygear_ClientObject;
 
-static char client_module_docstring[] =
-    "Wrapper for libgearman Client";
+PyDoc_STRVAR(client_module_docstring, "Represents a Gearman client");
 
 /* Class init methods */
 PyObject* Client_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
