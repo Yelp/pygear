@@ -166,6 +166,14 @@ PyDoc_STRVAR(pygear_worker_namespace_doc,
 "Get the current namespace of the worker\n"
 "@return The current namespace, or None if no namespace has been set");
 
+static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_set_log_fn_doc,
+"Register a callback that will be passed all error messages that are\n"
+"Given to the worker.\n"
+"@param[in] function Method to be called. Must take a string.\n"
+"@param[in] loglevel How verbose logging should be. Must be one of\n"
+"the pygear.PYGEAR_VERBOSE_* constants.\n");
+
 /* Module method specification */
 static PyMethodDef worker_module_methods[] = {
     _WORKERMETHOD(clone,            METH_NOARGS)
@@ -192,6 +200,7 @@ static PyMethodDef worker_module_methods[] = {
     _WORKERMETHOD(set_identifier,   METH_VARARGS)
     _WORKERMETHOD(set_namespace,    METH_VARARGS)
     _WORKERMETHOD(namespace,        METH_NOARGS)
+    _WORKERMETHOD(set_log_fn,       METH_VARARGS)
     {NULL, NULL, 0, NULL}
 };
 

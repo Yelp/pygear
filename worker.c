@@ -219,10 +219,42 @@ static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* 
  * See gearman_set_log_fn() for details.
  */
 
-void gearman_worker_set_log_fn(gearman_worker_st *worker,
-                               gearman_log_fn *function, void *context,
-                               gearman_verbose_t verbose);
+static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context){
+    PyGILState_STATE gstate = PyGILState_Ensure();
 
+    PyObject* python_cb_method = (PyObject*) context;
+
+    //if (!PyCallable_Check(python_cb_method)){
+    //  fprintf(stderr, "Worker logging callback is not an instance of Callable!\n");
+    //  PyGILState_Release(gstate);
+    //  return;
+    //}
+
+    fprintf(stderr, "Calling log cb %p with line `%s`\n", python_cb_method, line);
+    PyObject* python_line = PyString_FromString(line);
+    PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_line);
+    if (!callback_return){
+        fprintf(stderr, "Logging function failed!\n");
+        PyObject* exn = PyErr_Occurred();
+        if (exn){
+            PyErr_Print();
+        }
+    }
+
+    PyGILState_Release(gstate);
+}
+
+static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args){
+    PyObject* logging_cb;
+    int log_level;
+    if (!PyArg_ParseTuple(args, "Oi", &logging_cb, &log_level)){
+        return NULL;
+    }
+    Py_INCREF(logging_cb);
+    fprintf(stderr, "Setting gearman worker log method to %p loglevel %d\n", logging_cb, log_level);
+    gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, logging_cb, log_level);
+    Py_RETURN_NONE;
+}
 
 /**
  * Add a job server to a worker. This goes into a list of servers that can be
