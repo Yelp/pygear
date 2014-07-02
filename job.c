@@ -35,9 +35,6 @@ void Job_dealloc(pygear_JobObject* self){
  */
 
 
-/**
- * Send data for a running job.
- */
 static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
     PyObject* data;
     if (!PyArg_ParseTuple(args, "O", &data)){
@@ -60,9 +57,6 @@ static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
     Py_RETURN_NONE;
 }
 
-/**
- * Send warning for a running job.
- */
 static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args){
     PyObject* data;
     if (!PyArg_ParseTuple(args, "O", &data)){
@@ -85,9 +79,6 @@ static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
-/**
- * Send status information for a running job.
- */
 static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args){
     unsigned numerator, denominator;
     if (!PyArg_ParseTuple(args, "II", &numerator, &denominator)){
@@ -100,9 +91,6 @@ static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args){
     Py_RETURN_NONE;
 }
 
-/**
- * Send result and complete status for a job.
- */
 static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args){
     PyObject* result;
     if (!PyArg_ParseTuple(args, "O", &result)){
@@ -125,9 +113,6 @@ static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args
     Py_RETURN_NONE;
 }
 
-/**
- * Send exception for a running job.
- */
 static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* args){
     PyObject* data;
     if (!PyArg_ParseTuple(args, "O", &data)){
@@ -151,9 +136,6 @@ static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* arg
     Py_RETURN_NONE;
 }
 
-/**
- * Send fail status for a job.
- */
 static PyObject* pygear_job_send_fail(pygear_JobObject* self){
     gearman_return_t result = gearman_job_send_fail(self->g_Job);
     if (_pygear_check_and_raise_exn(result)){
@@ -162,30 +144,18 @@ static PyObject* pygear_job_send_fail(pygear_JobObject* self){
     Py_RETURN_NONE;
 }
 
-/**
- * Get job handle.
- */
 static PyObject* pygear_job_handle(pygear_JobObject* self){
     return Py_BuildValue("s", gearman_job_handle(self->g_Job));
 }
 
-/**
- * Get the function name associated with a job.
- */
 static PyObject* pygear_job_function_name(pygear_JobObject* self){
     return Py_BuildValue("s", gearman_job_function_name(self->g_Job));
 }
 
-/**
- * Get the unique ID associated with a job.
- */
 static PyObject* pygear_job_unique(pygear_JobObject* self){
     return Py_BuildValue("s", gearman_job_unique(self->g_Job));
 }
 
-/**
- * Get a the workload for a job.
- */
 static PyObject* pygear_job_workload(pygear_JobObject* self){
     const char* job_workload = gearman_job_workload(self->g_Job);
     size_t job_size = gearman_job_workload_size(self->g_Job);
@@ -194,16 +164,10 @@ static PyObject* pygear_job_workload(pygear_JobObject* self){
     return py_workload;
 }
 
-/**
- * Get size of the workload for a job.
- */
 static PyObject* pygear_job_workload_size(pygear_JobObject* self){
     return Py_BuildValue("I", gearman_job_workload_size(self->g_Job));
 }
 
-/**
- * Get error string for a job.
- */
 static PyObject* pygear_job_error(pygear_JobObject* self){
     return Py_BuildValue("s", gearman_job_error(self->g_Job));
 }

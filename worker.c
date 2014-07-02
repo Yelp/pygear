@@ -42,13 +42,6 @@ void Worker_dealloc(pygear_WorkerObject* self){
  * Instance Methods
  */
 
-/**
- * Clone a worker structure.
- *
- * @param[in] worker Caller allocated structure, or NULL to allocate one.
- * @param[in] from Structure to use as a source to clone from.
- * @return Same return as gearman_worker_create().
- */
 static PyObject* pygear_worker_clone(pygear_WorkerObject* self){
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_WorkerObject* python_worker = (pygear_WorkerObject*) PyObject_CallObject((PyObject *) &pygear_WorkerType, argList);
@@ -57,16 +50,10 @@ static PyObject* pygear_worker_clone(pygear_WorkerObject* self){
     return Py_BuildValue("O", python_worker);
 }
 
-/**
- * See gearman_error() for details.
- */
 static PyObject* pygear_worker_error(pygear_WorkerObject* self){
     return Py_BuildValue("s", gearman_worker_error(self->g_Worker));
 }
 
-/**
- * See gearman_errno() for details.
- */
 static PyObject* pygear_worker_errno(pygear_WorkerObject* self){
     return Py_BuildValue("i", gearman_worker_errno(self->g_Worker));
 }
@@ -82,14 +69,6 @@ static PyObject* pygear_worker_errno(pygear_WorkerObject* self){
 #define PYGEAR_WORKER_TIMEOUT_RETURN    "timeout_return"
 #define PYGEAR_WORKER_GRAB_ALL          "grab_all"
 #define PYGEAR_WORKER_MAX               "max"
-
-/**
- * Set options for a worker structure.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param options Available options for worker structures.
- */
 
 static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* args, PyObject* kwargs){
     static char *kwlist[] = {
@@ -150,14 +129,6 @@ static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
-/**
- * Get options for a worker structure.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @return Options set for the worker structure.
- */
-
 static PyObject* pygear_worker_get_options(pygear_WorkerObject* self){
     static int options_t_value[] = {
           GEARMAN_WORKER_ALLOCATED,
@@ -197,16 +168,10 @@ static PyObject* pygear_worker_get_options(pygear_WorkerObject* self){
     return option_dictionary;
 }
 
-/**
- * See gearman_universal_timeout() for details.
- */
 static PyObject* pygear_worker_timeout(pygear_WorkerObject* self){
     return Py_BuildValue("i", gearman_worker_timeout(self->g_Worker));
 }
 
-/**
- * See gearman_universal_set_timeout() for details.
- */
 static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* args){
     int timeout;
     if (!PyArg_ParseTuple(args, "i", &timeout)){
@@ -216,10 +181,6 @@ static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* 
 
     Py_RETURN_NONE;
 }
-
-/**
- * See gearman_set_log_fn() for details.
- */
 
 static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context){
     PyGILState_STATE gstate = PyGILState_Ensure();
@@ -248,16 +209,6 @@ static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
-/**
- * Add a job server to a worker. This goes into a list of servers that can be
- * used to run tasks. No socket I/O happens here, it is just added to a list.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param[in] host Hostname or IP address (IPv4 or IPv6) of the server to add.
- * @param[in] port Port of the server to add.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* args){
     char* host;
     int port;
@@ -271,19 +222,6 @@ static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
-
-/**
- * Add a list of job servers to a worker. The format for the server list is:
- * SERVER[:PORT][,SERVER[:PORT]]...
- * Some examples are:
- * [ "10.0.0.1", "10.0.0.2", "10.0.0.3" ]
- * [ "localhost234", "jobserver2.domain.com:7003", "10.0.0.3" ]
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param[in] servers Server list described above.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* args){
     PyObject* server_list;
     if (!PyArg_ParseTuple(args, "O", &server_list)){
@@ -311,24 +249,11 @@ static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
-/**
- * Remove all servers currently associated with the worker.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- */
 static PyObject* pygear_worker_remove_servers(pygear_WorkerObject* self){
     gearman_worker_remove_servers(self->g_Worker);
     Py_RETURN_NONE;
 }
 
-/**
- * When in non-blocking I/O mode, wait for activity from one of the servers.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_wait(pygear_WorkerObject* self){
     gearman_return_t result = gearman_worker_wait(self->g_Worker);
     if (_pygear_check_and_raise_exn(result)){
@@ -337,19 +262,6 @@ static PyObject* pygear_worker_wait(pygear_WorkerObject* self){
     Py_RETURN_NONE;
 }
 
-/**
- * Register function with job servers with an optional timeout. The timeout
- * specifies how many seconds the server will wait before marking a job as
- * failed. If timeout is zero, there is no timeout.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param[in] function_name Function name to register.
- * @param[in] timeout Optional timeout (in seconds) that specifies the maximum
- *  time a job should. This is enforced on the job server. A value of 0 means
- *  an infinite time.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* args){
     char* function_name;
     unsigned timeout;
@@ -363,14 +275,6 @@ static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* arg
     Py_RETURN_NONE;
 }
 
-/**
- * Unregister function with job servers.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param[in] function_name Function name to unregister.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* args){
     char* function_name;
     if (!PyArg_ParseTuple(args, "s", &function_name)){
@@ -383,13 +287,6 @@ static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
-/**
- * Unregister all functions with job servers.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self){
     gearman_return_t result = gearman_worker_unregister_all(self->g_Worker);
     if (_pygear_check_and_raise_exn(result)){
@@ -398,19 +295,6 @@ static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self){
     Py_RETURN_NONE;
 }
 
-/**
- * Get a job from one of the job servers. This does not used the callback
- * interface below, which means results must be sent back to the job server
- * manually. It is also the responsibility of the caller to free the job once
- * it has been completed.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param[in] job Caller allocated structure, or NULL to allocate one.
- * @param[out] ret_ptr Standard gearman return value.
- * @return On success, a pointer to the (possibly allocated) structure. On
- *  failure this will be NULL.
- */
 static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
     gearman_return_t result;
     gearman_job_st* new_job = gearman_worker_grab_job(self->g_Worker, NULL, &result);
@@ -426,25 +310,11 @@ static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
     return Py_BuildValue("O", python_job);
 }
 
-/**
- * Free all jobs for a gearman structure.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- */
 static PyObject* pygear_worker_free_all(pygear_WorkerObject* self){
     gearman_job_free_all(self->g_Worker);
     Py_RETURN_NONE;
 }
 
-/**
- * See if a function exists in the server. It will not return
- * true if the function is currently being de-allocated.
- * @param[in] worker gearman_worker_st that will be used.
- * @param[in] function_name Function name for search.
- * @param[in] function_length Length of function name.
- * @return bool
- */
 static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObject* args){
     char* function_name;
     int function_length;
@@ -456,7 +326,6 @@ static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObje
 
     return (func_exist ? Py_True : Py_False);
 }
-
 
 void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
                                    size_t* result_size, gearman_return_t* ret_ptr){
@@ -552,21 +421,6 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     return NULL;
 }
 
-/**
- * Register and add callback function for worker. To remove functions that have
- * been added, call gearman_worker_unregister() or
- * gearman_worker_unregister_all().
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param[in] function_name Function name to register.
- * @param[in] timeout Optional timeout (in seconds) that specifies the maximum
- *  time a job should. This is enforced on the job server. A value of 0 means
- *  an infinite time.
- * @param[in] function Function to run when there is a job ready.
- * @param[in] context Argument to pass into the callback function.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject* args){
     char* function_name;
     int timeout;
@@ -594,13 +448,6 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
     Py_RETURN_NONE;
 }
 
-/**
- * Wait for a job and call the appropriate callback function when it gets one.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_work(pygear_WorkerObject* self){
     gearman_return_t result  = gearman_worker_work(self->g_Worker);
     if (_pygear_check_and_raise_exn(result)){
@@ -609,16 +456,6 @@ static PyObject* pygear_worker_work(pygear_WorkerObject* self){
     Py_RETURN_NONE;
 }
 
-/**
- * Send data to all job servers to see if they echo it back. This is a test
- * function to see if job servers are responding properly.
- *
- * @param[in] worker Structure previously initialized with
- *  gearman_worker_create() or gearman_worker_clone().
- * @param[in] workload The workload to ask the server to echo back.
- * @param[in] workload_size Size of the workload.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_worker_echo(pygear_WorkerObject* self, PyObject* args){
     char* workload;
     int workload_size;

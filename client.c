@@ -114,13 +114,6 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
     return Py_BuildValue("s#", result_data, result_size);
 }
 
-/**
- * Clone a client structure.
- *
- * @param[in] client Caller allocated structure, or NULL to allocate one.
- * @param[in] from Structure to use as a source to clone from.
- * @return Same return as gearman_client_create().
- */
 static PyObject* pygear_client_clone(pygear_ClientObject* self){
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_ClientObject* python_client = (pygear_ClientObject*) PyObject_CallObject((PyObject *) &pygear_ClientType, argList);
@@ -128,9 +121,6 @@ static PyObject* pygear_client_clone(pygear_ClientObject* self){
     return Py_BuildValue("O", python_client);
 }
 
-/**
- * See gearman_error() for details.
- */
 static PyObject* pygear_client_error(pygear_ClientObject* self){
     return Py_BuildValue("s", gearman_client_error(self->g_Client));
 }
@@ -139,20 +129,11 @@ static PyObject* pygear_client_error_code(pygear_ClientObject* self){
     return Py_BuildValue("i", gearman_client_error_code(self->g_Client));
 }
 
-/**
- * See gearman_errno() for details.
- */
+
 static PyObject* pygear_client_errno(pygear_ClientObject* self){
     return Py_BuildValue("i", gearman_client_errno(self->g_Client));
 }
 
-/**
- * Set options for a client structure.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @param[in] options Available options for client structures.
- */
 #define CLIENT_OPT_NON_BLOCKING "non_blocking"
 #define CLIENT_OPT_UNBUFFERED_RESULT "unbuffered_result"
 #define CLIENT_OPT_FREE_TASKS "free_tasks"
@@ -197,11 +178,6 @@ static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
-/**
- * Get options for a client structure.
- *
- * @return A dictionary of options and their values
- */
 static PyObject* pygear_client_get_options(pygear_ClientObject* self){
     static int options_t_value[] = {
         GEARMAN_CLIENT_NON_BLOCKING,
@@ -225,16 +201,10 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self){
     return option_dictionary;
 }
 
-/**
- * See gearman_universal_timeout() for details.
- */
 static PyObject* pygear_client_timeout(pygear_ClientObject* self){
     return Py_BuildValue("i", gearman_client_timeout(self->g_Client));
 }
 
-/**
- * See gearman_universal_set_timeout() for details.
- */
 static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* args){
     int timeout;
     if (!PyArg_ParseTuple(args, "i", &timeout)){
@@ -243,10 +213,6 @@ static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* 
     gearman_client_set_timeout(self->g_Client, timeout);
     Py_RETURN_NONE;
 }
-
-/**
- * See gearman_set_log_fn() for details.
- */
 
 static void _pygear_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context){
     pygear_ClientObject* client = (pygear_ClientObject*) context;
@@ -271,16 +237,6 @@ static PyObject* pygear_client_set_log_fn(pygear_ClientObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
-/**
- * Add a job server to a client. This goes into a list of servers that can be
- * used to run tasks. No socket I/O happens here, it is just added to a list.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @param[in] host Hostname or IP address (IPv4 or IPv6) of the server to add.
- * @param[in] port Port of the server to add.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* args){
     char* host;
     int port;
@@ -294,18 +250,6 @@ static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
-/**
- * Add a list of job servers to a client. The format for the server list is:
- * SERVER[:PORT][,SERVER[:PORT]]...
- * Some examples are:
- * 10.0.0.1,10.0.0.2,10.0.0.3
- * localhost234,jobserver2.domain.com:7003,10.0.0.3
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @param[in] servers Server list described above.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args){
     PyObject* server_list;
     if (!PyArg_ParseTuple(args, "O", &server_list)){
@@ -333,52 +277,17 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
-/**
- * Remove all servers currently associated with the client.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- */
 static PyObject* pygear_client_remove_servers(pygear_ClientObject* self){
     gearman_client_remove_servers(self->g_Client);
     Py_RETURN_NONE;
 }
 
-/**
- * When in non-blocking I/O mode, wait for activity from one of the servers.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @return Standard gearman return value.
- */
 static PyObject* pygear_client_wait(pygear_ClientObject* self){
     if (_pygear_check_and_raise_exn(gearman_client_wait(self->g_Client))){
         return NULL;
     }
     Py_RETURN_NONE;
 }
-
-
-/**
- * Run a single task and return an allocated result.
- *
- * @param[in] function_name The name of the function to run.
- * @param[in] unique Optional unique job identifier, or NULL for a new UUID.
- * @param[in] workload_size Size of the workload.
- * @param[in] workload The workload to pass to the function when it is run.
- * @param[out] result_size The size of the data being returned.
- * @param[out] ret_ptr Standard gearman return value. In the case of
- *  GEARMAN_WORK_DATA, GEARMAN_WORK_WARNING, or GEARMAN_WORK_STATUS, the caller
- *  should take any actions to handle the event and then call this function
- *  again. This may happen multiple times until a GEARMAN_WORK_ERROR,
- *  GEARMAN_WORK_FAIL, or GEARMAN_SUCCESS (work complete) is returned. For
- *  GEARMAN_WORK_DATA or GEARMAN_WORK_WARNING, the result_size will be set to
- *  the intermediate data chunk being returned and an allocated data buffer
- *  will be returned. For GEARMAN_WORK_STATUS, the caller can use
- *  gearman_client_do_status() to get the current tasks status.
- * @return The result allocated by the library, this needs to be freed when the
- *  caller is done using it.
- */
 
 #define CLIENT_DO(DOTYPE) \
 static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
@@ -459,16 +368,6 @@ CLIENT_DO_BACKGROUND()
 CLIENT_DO_BACKGROUND(_high)
 CLIENT_DO_BACKGROUND(_low)
 
-
-/**
- * Get the job handle for the running task. This should be used between
- * repeated gearman_client_do() (and related) calls to get information.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @return Pointer to static buffer in the client structure that holds the job
- *  handle.
- */
 static PyObject* pygear_client_do_job_handle(pygear_ClientObject* self){
     return Py_BuildValue("s", gearman_client_do_job_handle(self->g_Client));
 }
@@ -480,18 +379,6 @@ static PyObject* pygear_client_do_status(pygear_ClientObject* self){
     return Py_BuildValue("(I,I)", numerator, denominator);
 }
 
-/**
- * Get the status for a backgound job.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @param[in] job_handle The job handle to get status for.
- * @param[out] is_known Optional parameter to store the known status in.
- * @param[out] is_running Optional parameter to store the running status in.
- * @param[out] numerator Optional parameter to store the numerator in.
- * @param[out] denominator Optional parameter to store the denominator in.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args){
     gearman_job_handle_t job_handle;
     bool is_known, is_running;
@@ -524,7 +411,6 @@ static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* a
     return status_dict;
 }
 
-
 static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject* args){
     char* unique;
     unsigned unique_len;
@@ -550,16 +436,6 @@ static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject
     return status_dict;
 }
 
-/**
- * Send data to all job servers to see if they echo it back. This is a test
- * function to see if the job servers are responding properly.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @param[in] workload The workload to ask the server to echo back.
- * @param[in] workload_size Size of the workload.
- * @return Standard gearman return value.
- */
 static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args){
     char* workload;
     unsigned workload_len;
@@ -576,15 +452,6 @@ static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args){
     Py_RETURN_NONE;
 }
 
-/**
- * Add a task to be run in parallel.
- *
- * @param[in] function_name The name of the function to run.
- * @param[in] workload The workload to pass to the function when it is run.
- * @param[in] unique Optional unique job identifier
- * @return A tuple of return code, Task structure. In the case of an error, Task
- *  will be None
- */
 #define CLIENT_ADD_TASK(TASKTYPE) \
 static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
     /* Mandatory arguments*/ \
@@ -628,18 +495,6 @@ CLIENT_ADD_TASK(_high_background)
 CLIENT_ADD_TASK(_low)
 CLIENT_ADD_TASK(_low_background)
 
-/**
- * Add task to get the status for a backgound task in parallel.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @param[in] task Caller allocated structure, or NULL to allocate one.
- * @param[in] context Application context to associate with the task.
- * @param[in] job_handle The job handle to get status for.
- * @param[out] ret_ptr Standard gearman return value.
- * @return On success, a pointer to the (possibly allocated) structure. On
- *  failure this will be NULL.
- */
 
 static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObject* args){
     char* job_handle;
@@ -669,13 +524,7 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
     return Py_BuildValue("O", python_task);
 }
 
-/**
- * Callback function when a job has been created for a task.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @param[in] function Function to call.
- */
+
 #define CALLBACK_WRAPPER(CB) gearman_return_t pygear_client_wrap_callback_##CB(gearman_task_st* gear_task) { \
     pygear_ClientObject* client = (pygear_ClientObject*) gearman_task_context(gear_task); \
     if (!client->cb_##CB){ \
@@ -722,12 +571,6 @@ CALLBACK_HANDLE(complete)
 CALLBACK_HANDLE(exception)
 CALLBACK_HANDLE(fail)
 
-/**
- * Clear all task callback functions.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- */
 static PyObject* pygear_client_clear_fn(pygear_ClientObject* self){
     gearman_client_clear_fn(self->g_Client);
     Py_XDECREF(self->cb_workload); self->cb_workload = NULL;
@@ -741,13 +584,6 @@ static PyObject* pygear_client_clear_fn(pygear_ClientObject* self){
     Py_RETURN_NONE;
 }
 
-/**
- * Run tasks that have been added in parallel.
- *
- * @param[in] client Structure previously initialized with
- *  gearman_client_create() or gearman_client_clone().
- * @return Standard gearman return value.
- */
 static PyObject* pygear_client_run_tasks(pygear_ClientObject* self){
     if (_pygear_check_and_raise_exn(gearman_client_run_tasks(self->g_Client))){
         return NULL;
