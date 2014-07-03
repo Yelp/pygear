@@ -44,24 +44,20 @@ PyDoc_STRVAR(pygear_client_clone_doc,
 static PyObject* pygear_client_add_server(pygear_ClientObject *self, PyObject *args);
 PyDoc_STRVAR(pygear_client_add_server_doc,
 "Add a list of job servers to a client. The format for the server list is:\n"
-"SERVER[:PORT][,SERVER[:PORT]]...\n"
+"[ 'SERVER[:PORT]', [,SERVER[:PORT]]... ]\n"
 "Some examples are:\n"
-"10.0.0.1,10.0.0.2,10.0.0.3\n"
-"localhost234,jobserver2.domain.com:7003,10.0.0.3\n"
-"@param[in] client Structure previously initialized with "
-"gearman_client_create() or gearman_client_clone().\n"
+"['10.0.0.1, '10.0.0.2', '10.0.0.3']\n"
+"['localhost234', 'jobserver2.domain.com:7003', '10.0.0.3']\n"
 "@param[in] servers Server list described above.\n"
-"@return Standard gearman return value.");
+"@raises Pygear exception on failure.");
 
 static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_add_servers_doc,
 "Add a job server to a client. This goes into a list of servers that can be\n"
 "used to run tasks. No socket I/O happens here, it is just added to a list.\n"
-"@param[in] client Structure previously initialized with "
-"gearman_client_create() or gearman_client_clone().\n"
 "@param[in] host Hostname or IP address (IPv4 or IPv6) of the server to add.\n"
 "@param[in] port Port of the server to add.\n"
-"@return Standard gearman return value.");
+"@raises Pygear exception on failure.");
 
 static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_doc,
@@ -69,7 +65,8 @@ PyDoc_STRVAR(pygear_client_add_task_doc,
 "@param[in] function_name The name of the function to run.\n"
 "@param[in] workload The workload to pass to the function when it is run.\n"
 "@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
-"@return A tuple of return code, Task object. On failure the Task will be None.");
+"@return A newly created Task object.\n"
+"@raises Pygear exception on failure.");
 
 static PyObject* pygear_client_add_task_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_background_doc,
@@ -109,7 +106,8 @@ PyDoc_STRVAR(pygear_client_do_doc,
 "@param[in] function_name The name of the function to run.\n"
 "@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
 "@param[in] workload The workload to pass to the function when it is run.\n"
-"@return Tuple of standard gearman return value and result. In the case of\n"
+"@return The result of the task.\n"
+"@raises Pygear exception on failure. If the exception is one of\n"
 " GEARMAN_WORK_DATA, GEARMAN_WORK_WARNING, or GEARMAN_WORK_STATUS, the caller\n"
 " should take any actions to handle the event and then call this function\n"
 " again. This may happen multiple times until a GEARMAN_WORK_ERROR,\n"
@@ -163,15 +161,17 @@ PyDoc_STRVAR(pygear_client_set_options_doc,
 
 static PyObject* pygear_client_get_options(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_get_options_doc,
-"Returns a dictionary of the current options set on the client");
+"@return Dictionary of the current options set on the client");
 
 static PyObject* pygear_client_run_tasks(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_run_tasks_doc,
-"Run tasks that have been added in parallel");
+"Run tasks that have been added in parallel\n"
+"@raises Pygear exception on failure.");
 
 static PyObject* pygear_client_wait(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_wait_doc,
-"When in non-blocking I/O mode, wait for activity from one of the servers.");
+"When in non-blocking I/O mode, wait for activity from one of the servers.\n"
+"@raises Pygear exception on failure.");
 
 static PyObject* pygear_client_set_workload_fn(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_set_workload_fn_doc,
@@ -223,11 +223,14 @@ PyDoc_STRVAR(pygear_client_set_fail_fn_doc,
 
 static PyObject* pygear_client_timeout(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_timeout_doc,
-"See gearman_universal_timeout() for details.");
+"Get the time in milliseconds that the client will wait before timing out.\n"
+"@return Duration client will wait in milliseconds.");
 
 static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_set_timeout_doc,
-"See gearman_universal_set_timeout() for details.");
+"Set the time in milliseconds that the client will wait before timing out.\n"
+"A value of zero will tel the client to never time out.\n"
+"@param[in] timeout Duration to wait in milliseconds.");
 
 static PyObject* pygear_client_error(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_error_doc,
