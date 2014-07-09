@@ -1,5 +1,6 @@
 .gitattributes
 build
+dist
 *.so
 tests/__pycache__
 *.pyc
