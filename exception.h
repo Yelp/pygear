@@ -1,6 +1,10 @@
 #ifndef EXCEPTION_H
 #define EXCEPTION_H
 
+// Generic pygear exception
+PyObject* PyGearExn_ERROR;
+
+// Exceptions corresponding to non-zero libgearman return codes
 PyObject* PyGearExn_SHUTDOWN;
 PyObject* PyGearExn_SHUTDOWN_GRACEFUL;
 PyObject* PyGearExn_ERRNO;

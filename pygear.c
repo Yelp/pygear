@@ -28,6 +28,11 @@ PyMODINIT_FUNC initpygear(void){
         return;
     }
 
+    pygear_AdminType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&pygear_AdminType) < 0){
+        return;
+    }
+
     // Initialize pygear module
     m = Py_InitModule3("pygear", pygear_class_methods, pygear_class_docstring);
 
@@ -47,6 +52,10 @@ PyMODINIT_FUNC initpygear(void){
     Py_INCREF(&pygear_WorkerType);
     PyModule_AddObject(m, "Worker", (PyObject *)&pygear_WorkerType);
 
+    // Add Admin class
+    Py_INCREF(&pygear_AdminType);
+    PyModule_AddObject(m, "Admin", (PyObject *)&pygear_AdminType);
+
     // Enum replacements
     PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_NEVER", GEARMAN_VERBOSE_NEVER);
     PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_FATAL", GEARMAN_VERBOSE_FATAL);
@@ -57,6 +66,7 @@ PyMODINIT_FUNC initpygear(void){
     PyModule_AddIntConstant(m, "PYGEAR_VERBOSE_MAX",   GEARMAN_VERBOSE_MAX);
 
     // Exception init
+    INIT_EXN(ERROR);
     INIT_EXN(SHUTDOWN);
     INIT_EXN(SHUTDOWN_GRACEFUL);
     INIT_EXN(ERRNO);

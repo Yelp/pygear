@@ -8,6 +8,7 @@
 #include "job.c"
 #include "worker.c"
 #include "exception.h"
+#include "admin.c"
 
 PyDoc_STRVAR(pygear_class_docstring,
 "PyGear is a python wrapper for the libgearman C library");
