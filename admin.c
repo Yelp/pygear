@@ -34,8 +34,13 @@ int Admin_init(pygear_AdminObject *self, PyObject *args, PyObject *kwds){
 
     self->socket_module = PyImport_ImportModule("socket");
     self->socket_error = PyObject_GetAttrString(self->socket_module, "error");
-    if (self->socket_module == NULL
-    ||  self->socket_error  == NULL) {
+    if (self->socket_module == NULL){
+        PyErr_SetString(PyExc_ImportError, "Failed to import 'socket'");
+        return -1;
+    }
+
+    if (self->socket_error  == NULL) {
+        PyErr_SetString(PyExc_ImportError, "Failed to import 'socket.error'");
         return -1;
     }
 

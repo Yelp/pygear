@@ -18,6 +18,10 @@ PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds){
     self->g_Job = NULL;
     self->pickle = PyImport_ImportModule("pickle");
+    if (!self->pickle){
+        PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
+        return -1;
+    }
     return 0;
 }
 

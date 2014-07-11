@@ -20,8 +20,17 @@ int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds){
     self->g_Worker = gearman_worker_create(NULL);
     self->g_FunctionMap = PyDict_New();
     self->pickle = PyImport_ImportModule("pickle");
-    if (self->g_Worker == NULL || self->g_FunctionMap == NULL || self->pickle == NULL){
-        return 1;
+    if (self->g_Worker == NULL){
+        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman worker structure");
+        return -1;
+    }
+    if (self->g_FunctionMap == NULL){
+        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary");
+        return -1;
+    }
+    if (self->pickle == NULL){
+        PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
+        return -1;
     }
     return 0;
 }

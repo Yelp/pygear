@@ -19,7 +19,8 @@ int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
     self->pickle = PyImport_ImportModule("pickle");
     self->g_Task = NULL;
     if (!self->pickle){
-        return 1;
+        PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
+        return -1;
     }
     return 0;
 }
