@@ -317,6 +317,16 @@ static PyObject* pygear_client_clear_fn(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_clear_fn_doc,
 "Clear all task callback functions.");
 
+static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_set_serializer_doc,
+"Specify the object to be used to serialize data passed through gearman.\n"
+"By default, pygear will use pickle or cPickle to convert data to a string\n"
+"representation during transit and reconstitute it on the other end.\n"
+"You can replace the serializer with your own as long as it implements\n"
+"the 'dumps' and 'loads' methods. 'dumps' must return a string, and loads\n"
+"must take a string.\n"
+"@param[in] serializer Object implementing dumps and loads");
+
 /* Module method specification */
 static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(clone,                    METH_NOARGS)
@@ -374,6 +384,7 @@ static PyMethodDef client_module_methods[] = {
     _CLIENTMETHOD(get_options,              METH_NOARGS)
     _CLIENTMETHOD(timeout,                  METH_NOARGS)
     _CLIENTMETHOD(set_timeout,              METH_VARARGS)
+    _CLIENTMETHOD(set_serializer,           METH_VARARGS)
 
     {NULL, NULL, 0, NULL}
 };

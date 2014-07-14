@@ -109,6 +109,15 @@ static PyObject* pygear_job_error(pygear_JobObject* self);
 PyDoc_STRVAR(pygear_job_error_doc,
 "Get a string representation of the last job error");
 
+static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_job_set_serializer_doc,
+"Specify the object to be used to serialize data passed through gearman.\n"
+"By default, pygear will use pickle or cPickle to convert data to a string\n"
+"representation during transit and reconstitute it on the other end.\n"
+"You can replace the serializer with your own as long as it implements\n"
+"the 'dumps' and 'loads' methods. 'dumps' must return a string, and loads\n"
+"must take a string.\n"
+"@param[in] serializer Object implementing dumps and loads");
 
 /* Module method specification */
 static PyMethodDef job_module_methods[] = {
@@ -124,6 +133,7 @@ static PyMethodDef job_module_methods[] = {
      _JOBMETHOD(workload,           METH_NOARGS)
      _JOBMETHOD(workload_size,      METH_NOARGS)
      _JOBMETHOD(error,              METH_NOARGS)
+     _JOBMETHOD(set_serializer,     METH_VARARGS)
     {NULL, NULL, 0, NULL}
 };
 

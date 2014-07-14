@@ -98,6 +98,16 @@ static PyObject* pygear_task_data_size(pygear_TaskObject* self);
 PyDoc_STRVAR(pygear_task_data_size_doc,
 "Get the size of the data for a completed task in bytes");
 
+static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_task_set_serializer_doc,
+"Specify the object to be used to serialize data passed through gearman.\n"
+"By default, pygear will use pickle or cPickle to convert data to a string\n"
+"representation during transit and reconstitute it on the other end.\n"
+"You can replace the serializer with your own as long as it implements\n"
+"the 'dumps' and 'loads' methods. 'dumps' must return a string, and loads\n"
+"must take a string.\n"
+"@param[in] serializer Object implementing dumps and loads");
+
 /* Module method specification */
 static PyMethodDef task_module_methods[] = {
     _TASKMETHOD(function_name, METH_NOARGS)
@@ -111,6 +121,7 @@ static PyMethodDef task_module_methods[] = {
     _TASKMETHOD(strstate, METH_NOARGS)
     _TASKMETHOD(result, METH_NOARGS)
     _TASKMETHOD(data_size, METH_NOARGS)
+    _TASKMETHOD(set_serializer, METH_VARARGS)
     {NULL, NULL, 0, NULL}
 };
 

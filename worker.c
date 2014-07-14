@@ -47,7 +47,11 @@ PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds){
     self->g_Worker = gearman_worker_create(NULL);
     self->g_FunctionMap = PyDict_New();
-    self->pickle = PyImport_ImportModule("pickle");
+    self->pickle = PyImport_ImportModule("cPickle");
+    if (!self->pickle){
+        PyErr_Clear();
+        self->pickle = PyImport_ImportModule("pickle");
+    }
     if (self->g_Worker == NULL){
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman worker structure");
         return -1;
@@ -78,6 +82,30 @@ void Worker_dealloc(pygear_WorkerObject* self){
 /*
  * Instance Methods
  */
+
+static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObject* args){
+    PyObject* serializer;
+
+    if (!PyArg_ParseTuple(args, "O", &serializer)){
+        return NULL;
+    }
+
+    if (!PyObject_HasAttrString(serializer, "loads")){
+        PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'loads'");
+        return NULL;
+    }
+
+    if (!PyObject_HasAttrString(serializer, "dumps")){
+        PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
+        return NULL;
+    }
+
+    Py_INCREF(serializer);
+    Py_XDECREF(self->pickle);
+    self->pickle = serializer;
+
+    Py_RETURN_NONE;
+}
 
 static PyObject* pygear_worker_clone(pygear_WorkerObject* self){
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
@@ -342,6 +370,9 @@ static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
 
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
+    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", self->pickle)){
+        return NULL;
+    }
     python_job->g_Job = new_job;
 
     return Py_BuildValue("O", python_job);
@@ -383,6 +414,9 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     // callback method
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
+    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", worker->pickle)){
+        return NULL;
+    }
     python_job->g_Job = gear_job;
 
     PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
@@ -403,6 +437,8 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
         Py_XINCREF(ptype);
         Py_XINCREF(pvalue);
         Py_XINCREF(ptraceback);
+        PyErr_Restore(ptype, pvalue, ptraceback);
+        PyErr_Print();
         PyErr_Restore(ptype, pvalue, ptraceback);
 
         // The value and traceback object may be NULL even when the type object is not.

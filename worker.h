@@ -202,6 +202,16 @@ PyDoc_STRVAR(pygear_worker_set_log_fn_doc,
 "@param[in] loglevel How verbose logging should be. Must be one of\n"
 "the pygear.PYGEAR_VERBOSE_* constants.\n");
 
+static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_set_serializer_doc,
+"Specify the object to be used to serialize data passed through gearman.\n"
+"By default, pygear will use pickle or cPickle to convert data to a string\n"
+"representation during transit and reconstitute it on the other end.\n"
+"You can replace the serializer with your own as long as it implements\n"
+"the 'dumps' and 'loads' methods. 'dumps' must return a string, and loads\n"
+"must take a string.\n"
+"@param[in] serializer Object implementing dumps and loads");
+
 /* Module method specification */
 static PyMethodDef worker_module_methods[] = {
     _WORKERMETHOD(clone,            METH_NOARGS)
@@ -229,6 +239,7 @@ static PyMethodDef worker_module_methods[] = {
     _WORKERMETHOD(set_namespace,    METH_VARARGS)
     _WORKERMETHOD(namespace,        METH_NOARGS)
     _WORKERMETHOD(set_log_fn,       METH_VARARGS)
+    _WORKERMETHOD(set_serializer,   METH_VARARGS)
     {NULL, NULL, 0, NULL}
 };
 

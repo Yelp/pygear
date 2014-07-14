@@ -44,7 +44,11 @@ PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 }
 
 int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
-    self->pickle = PyImport_ImportModule("pickle");
+    self->pickle = PyImport_ImportModule("cPickle");
+    if (!self->pickle){
+        PyErr_Clear();
+        self->pickle = PyImport_ImportModule("pickle");
+    }
     self->g_Task = NULL;
     if (!self->pickle){
         PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
@@ -106,6 +110,30 @@ static PyObject* pygear_task_strstate(pygear_TaskObject* self){
 
 static PyObject* pygear_task_data_size(pygear_TaskObject* self){
     return Py_BuildValue("I", gearman_task_data_size(self->g_Task));
+}
+
+static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* args){
+    PyObject* serializer;
+
+    if (!PyArg_ParseTuple(args, "O", &serializer)){
+        return NULL;
+    }
+
+    if (!PyObject_HasAttrString(serializer, "loads")){
+        PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'loads'");
+        return NULL;
+    }
+
+    if (!PyObject_HasAttrString(serializer, "dumps")){
+        PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
+        return NULL;
+    }
+
+    Py_INCREF(serializer);
+    Py_XDECREF(self->pickle);
+    self->pickle = serializer;
+
+    Py_RETURN_NONE;
 }
 
 static PyObject* pygear_task_result(pygear_TaskObject* self){

@@ -150,3 +150,43 @@ def test_callback_exception(c):
     c.run_tasks()
     worker_thread.join()
     assert cb_test.called
+
+class cat_serializer(object):
+    def loads(self, s):
+        return "meow"
+
+    def dumps(self, s):
+        return "purr"
+
+def thread_worker_cat_serializer():
+    def worker_fn_data(J):
+        jobdata = J.workload()
+        assert jobdata == "meow"
+        J.send_data("will be encoded to purr")
+
+    worker = w()
+    worker.set_serializer(cat_serializer())
+    worker.add_function("test_integration_serializer", 0, worker_fn_data)
+    sys.stderr.write("Worker starting...\n")
+    try:
+        while True:
+            worker.work()
+    except pygear.TIMEOUT:
+        pass
+    sys.stderr.write("Worker done\n")
+
+def test_change_serializer(c):
+    def expect_meow(t):
+        assert t.result() == 'meow'
+
+    def fail_test(*args):
+        assert False
+
+    c.set_complete_fn(expect_meow)
+    c.set_exception_fn(fail_test)
+    c.set_serializer(cat_serializer())
+    worker_thread = multiprocessing.Process(target=thread_worker_cat_serializer)
+    worker_thread.start()
+    c.add_task("test_integration_serializer", "Woof")
+    c.run_tasks()
+    worker_thread.join()

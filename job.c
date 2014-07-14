@@ -45,7 +45,11 @@ PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds){
     self->g_Job = NULL;
-    self->pickle = PyImport_ImportModule("pickle");
+    self->pickle = PyImport_ImportModule("cPickle");
+    if (!self->pickle){
+        PyErr_Clear();
+        self->pickle = PyImport_ImportModule("pickle");
+    }
     if (!self->pickle){
         PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
         return -1;
@@ -65,6 +69,30 @@ void Job_dealloc(pygear_JobObject* self){
 /*
  * Instance Methods
  */
+
+static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* args){
+    PyObject* serializer;
+
+    if (!PyArg_ParseTuple(args, "O", &serializer)){
+        return NULL;
+    }
+
+    if (!PyObject_HasAttrString(serializer, "loads")){
+        PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'loads'");
+        return NULL;
+    }
+
+    if (!PyObject_HasAttrString(serializer, "dumps")){
+        PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
+        return NULL;
+    }
+
+    Py_INCREF(serializer);
+    Py_XDECREF(self->pickle);
+    self->pickle = serializer;
+
+    Py_RETURN_NONE;
+}
 
 
 static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){

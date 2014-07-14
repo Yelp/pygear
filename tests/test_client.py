@@ -34,3 +34,17 @@ def test_clone(c):
     cl = c.clone()
     assert cl.timeout() == 30
     assert cl.get_options() == c.get_options()
+
+def test_invalid_serializer(c):
+    with pytest.raises(AttributeError):
+        c.set_serializer("a string doesn't implement loads.")
+
+class noop_serializer(object):
+    def loads(self, s):
+        return s
+
+    def dumps(self, s):
+        return s
+
+def test_valid_serializer(c):
+    c.set_serializer(noop_serializer())
