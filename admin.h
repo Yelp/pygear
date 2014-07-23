@@ -13,11 +13,13 @@
 
 #define _ADMINMETHOD(name,flags) {#name,(PyCFunction) pygear_admin_##name,flags,pygear_admin_##name##_doc},
 
+#define ADMIN_DEFAULT_TIMEOUT 60.0
+
 typedef struct {
     PyObject_HEAD
     char* host;
     int port;
-    int timeout;
+    double timeout;
     PyObject* socket_module;
     PyObject* socket_error;
     PyObject* conn;
@@ -46,8 +48,11 @@ PyDoc_STRVAR(pygear_admin_set_server_doc,
 static PyObject* pygear_admin_status(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_status_doc,
 "Get the status of the functions on the gearman server\n"
-"Returns a list of tuples of the format\n"
-"(function_name, queued_jobs, active_jobs, workers)");
+"Returns a list of dictionaries, each of which has four keys:\n"
+"function: string: name of the queue\n"
+"total: int: number of tasks currently in queue\n"
+"running: int: number of tasks currently being run by workers\n"
+"available_workers: number of workers available to process tasks in that queue");
 
 static PyObject* pygear_admin_workers(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_workers_doc,
@@ -85,6 +90,29 @@ PyDoc_STRVAR(pygear_admin_create_function_doc,
 "Instruct the server to create a function \n"
 "@param[in] func_name Name of the function (queue) to create");
 
+static PyObject* pygear_admin_set_timeout(pygear_AdminObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_admin_set_timeout_doc,
+"Set the timeout (in seconds) for socket operations.\n"
+"By default, the timeout is one minute.\n"
+"@param[in] timeout Float number of seconds to wait");
+
+static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_show_jobs_doc,
+"Show jobs currently on the server.\n"
+"Returns a list of dicts containing the following:\n"
+"handle: The job handle for the job\n"
+"retries: \n"
+"ignore_job: \n"
+"job_queued: ");
+
+static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_show_unique_jobs_doc,
+"Get a list of Job unique IDs");
+
+static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_admin_cancel_job_doc,
+"Cancel a job by job handle.\n"
+"@param[in] handle String handle of the job to cancel");
 
 /* Module method specification */
 static PyMethodDef admin_module_methods[] = {
@@ -99,6 +127,10 @@ static PyMethodDef admin_module_methods[] = {
     _ADMINMETHOD(getpid,                   METH_NOARGS)
     _ADMINMETHOD(drop_function,            METH_VARARGS)
     _ADMINMETHOD(create_function,          METH_VARARGS)
+    _ADMINMETHOD(set_timeout,              METH_VARARGS)
+    _ADMINMETHOD(show_jobs,                METH_NOARGS)
+    _ADMINMETHOD(show_unique_jobs,         METH_NOARGS)
+    _ADMINMETHOD(cancel_job,               METH_VARARGS)
 
     {NULL, NULL, 0, NULL}
 };
