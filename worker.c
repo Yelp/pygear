@@ -368,8 +368,16 @@ static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
         return NULL;
     }
 
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    PyObject* argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    if (argList == NULL){
+        PyErr_SetString(PyExc_RuntimeError, "Failed to instantiate argument tuple for new Job object");
+        return NULL;
+    }
     pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
+    if (python_job == NULL){
+        PyErr_SetString(PyExc_RuntimeError, "Failed to instantiate new Job object");
+        return NULL;
+    }
     if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", self->pickle)){
         return NULL;
     }
