@@ -29,6 +29,11 @@
 #include <Python.h>
 #include <libgearman-1.0/gearman.h>
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include "structmember.h"
 #include "exception.h"
 
@@ -41,16 +46,14 @@
 
 #define _ADMINMETHOD(name,flags) {#name,(PyCFunction) pygear_admin_##name,flags,pygear_admin_##name##_doc},
 
-#define ADMIN_DEFAULT_TIMEOUT 60.0
+#define ADMIN_DEFAULT_TIMEOUT 10.0
 
 typedef struct {
     PyObject_HEAD
     char* host;
     int port;
     double timeout;
-    PyObject* socket_module;
-    PyObject* socket_error;
-    PyObject* conn;
+    int sockfd;
 } pygear_AdminObject;
 
 PyDoc_STRVAR(admin_module_docstring, "Represents a Gearman administrative client");
