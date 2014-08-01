@@ -432,59 +432,31 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self){
         PyObject* worker_line_list = PyObject_CallMethod(worker_line, "split", "s", " ");
         if (!worker_line_list) { return NULL; }
 
-        // worker_line_list should have two elements -
-        // 'FD IP-ADDRESS CLIENT-ID' and 'FUNCTION'
-        if (PyList_Size(worker_line_list) != 2){
+        // worker_line_list should have at least 4 elements -
+        // 'FD IP-ADDRESS CLIENT-ID :' and potentially 'FUNCTION ...'
+        if (PyList_Size(worker_line_list) < 4){
             PyErr_SetObject(
                 PyGearExn_ERROR,
                 PyString_FromFormat(
-                    "Malformed response line from server, expected colon: '%s'",
+                    "Malformed response line from server: '%s'",
                     PyString_AsString(worker_line)
                 )
             );
             return NULL;
         }
 
-        PyObject* worker_functions_string = PyList_GetItem(worker_line_list, 1);
-        worker_functions_string = PyObject_CallMethod(worker_functions_string, "strip", "");
-        PyObject* worker_function_list = NULL;
-        if (PyString_Size(worker_functions_string) == 0){
-            worker_function_list = PyList_New(0);
-        } else {
-            worker_function_list = PyObject_CallMethod(worker_functions_string, "split", "s", " ");
-        }
-        if (worker_function_list == NULL){
-            return NULL;
+
+        PyObject* worker_function_list = PyList_New(0);
+        int list_i;
+        for (list_i = 5; list_i < PyList_Size(worker_line_list); list_i++){
+            PyObject_CallMethod(worker_function_list, "append", "O", PyList_GetItem(worker_line_list, list_i));
         }
 
-        PyObject* worker_line_prefix = PyList_GetItem(worker_line_list, 0);
-        if (worker_line_prefix == NULL){ return NULL; }
-        worker_line_prefix = PyObject_CallMethod(worker_line_prefix, "strip", "");
-        if (worker_line_prefix == NULL){ return NULL; }
-
-        PyObject* worker_split_prefix = PyObject_CallMethod(worker_line_prefix, "split", "s", " ");
-        if (worker_split_prefix == NULL){
-            return NULL;
-        }
-
-        // There should be three values in the pre-colon part of the
-        // worker line
-        if (PyList_Size(worker_split_prefix) != 3){
-            PyErr_SetObject(
-                PyGearExn_ERROR,
-                PyString_FromFormat(
-                    "Malformed response line from server, expected three spaces: '%s'",
-                    PyString_AsString(worker_line_prefix)
-                )
-            );
-            return NULL;
-        }
-
-        PyObject* worker_fd = PyList_GetItem(worker_split_prefix, 0);
+        PyObject* worker_fd = PyList_GetItem(worker_line_list, 0);
         if (!worker_fd) { return NULL; }
-        PyObject* worker_ip_addr = PyList_GetItem(worker_split_prefix, 1);
+        PyObject* worker_ip_addr = PyList_GetItem(worker_line_list, 1);
         if (!worker_ip_addr) { return NULL; }
-        PyObject* worker_client_id = PyList_GetItem(worker_split_prefix, 2);
+        PyObject* worker_client_id = PyList_GetItem(worker_line_list, 2);
         if (!worker_client_id) { return NULL; }
 
         PyObject* worker_dict = PyDict_New();
