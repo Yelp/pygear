@@ -9,7 +9,7 @@ pygear = Extension(
 
 setup(
     name="pygear",
-    version="0.3",
+    version="0.4",
     ext_modules=[pygear],
     test_requires = [
         'pytest',
