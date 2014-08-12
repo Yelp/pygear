@@ -10,6 +10,7 @@ def worker_rev_fn(job):
     job.send_complete(workload[::-1])
 
 def test_work_no_functions(w):
+    w.add_server("localhost", 4730)
     with pytest.raises(pygear.NO_REGISTERED_FUNCTIONS):
         w.work()
 
