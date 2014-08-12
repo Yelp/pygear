@@ -28,6 +28,14 @@ paths in setup.py to match your exact configuration.
 - `make install` Directly installs the module
 - `make test` Run tests against the module. Requires tox and pytest.
 
+## Notes
+
+As of version 0.4, the default internal serializer for pygear is JSON
+instead of pickle. In order to send complex objects in pygear jobs, it
+is now necessary to specify your own serializer using the .set_serializer
+method on the Client / Worker. The parameter to set_serializer must be
+an object that implements the loads(string) and dumps(object) methods.
+
 ## Examples
 
 ### Reverse
