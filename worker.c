@@ -450,13 +450,61 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
         if (!pvalue){ pvalue = Py_None; }
         if (!ptraceback){ ptraceback = Py_None; }
 
-        PyObject* traceback = PyImport_ImportModule("traceback");
-        PyObject* string_traceback = PyObject_CallMethod(traceback, "format_tb", "O", ptraceback);
+        PyObject* ptype_repr = PyObject_Repr(ptype);
+        if (!ptype_repr){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to get repr of exception type\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
 
-        PyObject* error_tuple = Py_BuildValue("(O, O, O)", ptype, pvalue, string_traceback);
+        PyObject* pvalue_args = PyObject_GetAttrString(pvalue, "args");
+        if (!pvalue_args){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to extract args from exception\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
+        PyObject* traceback = PyImport_ImportModule("traceback");
+        if (!traceback){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to import traceback for error reporting\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
+        PyObject* string_traceback = PyObject_CallMethod(traceback, "format_tb", "O", ptraceback);
+        if (!string_traceback){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to get formatted traceback\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
+        PyObject* error_tuple = Py_BuildValue("(O, O, O)", ptype_repr, pvalue_args, string_traceback);
+        if (!error_tuple){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed create tuple containing exception details\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
         PyObject* pickled_data = PyObject_CallMethod(worker->pickle, "dumps", "(O)", error_tuple);
         if (!pickled_data){
-            PyErr_SetString(PyExc_SystemError, "Failed to pickle exception data\n");
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to pickle exception data\n");
+            }
             PyGILState_Release(gstate);
             *ret_ptr = GEARMAN_FAIL;
             return NULL;
@@ -470,8 +518,11 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             return NULL;
         }
 
-        if (_pygear_check_and_raise_exn(gearman_job_send_exception(gear_job, c_data, c_data_size))){
-            PyErr_Print();
+        gearman_return_t exn_sent = gearman_job_send_exception(gear_job, c_data, c_data_size);
+        if (!gearman_success(exn_sent)){
+            PyErr_SetObject(PyExc_SystemError, PyString_FromFormat("Failed to send exception data for job: %s\n", gearman_strerror(exn_sent)));
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
         }
 
     } else {
@@ -527,6 +578,9 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
 
 static PyObject* pygear_worker_work(pygear_WorkerObject* self){
     gearman_return_t result  = gearman_worker_work(self->g_Worker);
+    if (PyErr_Occurred()){
+        return NULL;
+    }
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
