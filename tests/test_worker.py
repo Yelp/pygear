@@ -1,5 +1,6 @@
 import pytest
 import pygear
+from . import TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT
 
 @pytest.fixture
 def w():
@@ -10,13 +11,13 @@ def worker_rev_fn(job):
     job.send_complete(workload[::-1])
 
 def test_work_no_functions(w):
-    w.add_server("localhost", 4730)
+    w.add_server(TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT)
     with pytest.raises(pygear.NO_REGISTERED_FUNCTIONS):
         w.work()
 
 def test_work_timeout(w):
     w.add_function("reverse", 60, worker_rev_fn)
-    w.add_server("localhost", 4730)
+    w.add_server(TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT)
     w.set_timeout(30)
     with pytest.raises(pygear.TIMEOUT):
         w.work()

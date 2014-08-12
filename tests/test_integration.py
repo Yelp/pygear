@@ -4,8 +4,7 @@ import multiprocessing
 from mock import Mock
 import sys
 
-TEST_GEARMAN_SERVERS = ["srv1-devc"]
-TEST_TIMEOUT_SECONDS = 15
+from . import TEST_GEARMAN_SERVERS, TEST_TIMEOUT_SECONDS
 
 class TestError(Exception):
     pass
