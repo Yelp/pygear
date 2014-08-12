@@ -29,6 +29,8 @@
 #ifndef PYGEAR_H
 #define PYGEAR_H
 
+#define PYTHON_SERIALIZER "pickle"
+
 #include <Python.h>
 #include <libgearman-1.0/gearman.h>
 #include "client.c"

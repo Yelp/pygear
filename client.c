@@ -45,17 +45,13 @@ PyObject* Client_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 
 int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
     self->g_Client = gearman_client_create(NULL);
-    self->pickle = PyImport_ImportModule("cPickle");
-    if (!self->pickle){
-        PyErr_Clear();
-        self->pickle = PyImport_ImportModule("pickle");
+    self->pickle = PyImport_ImportModule(PYTHON_SERIALIZER);
+    if (self->pickle == NULL){
+        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+        return -1;
     }
     if (self->g_Client == NULL){
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman client structure");
-        return -1;
-    }
-    if (self->pickle == NULL) {
-        PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
         return -1;
     }
 

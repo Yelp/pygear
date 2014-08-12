@@ -44,16 +44,13 @@ PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 }
 
 int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
-    self->pickle = PyImport_ImportModule("cPickle");
-    if (!self->pickle){
-        PyErr_Clear();
-        self->pickle = PyImport_ImportModule("pickle");
-    }
-    self->g_Task = NULL;
-    if (!self->pickle){
-        PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
+    self->pickle = PyImport_ImportModule(PYTHON_SERIALIZER);
+    if (self->pickle == NULL){
+        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
         return -1;
     }
+    self->g_Task = NULL;
+
     return 0;
 }
 
