@@ -44,8 +44,8 @@ PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 }
 
 int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
-    self->pickle = PyImport_ImportModule(PYTHON_SERIALIZER);
-    if (self->pickle == NULL){
+    self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
+    if (self->serializer == NULL){
         PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
         return -1;
     }
@@ -59,7 +59,7 @@ void Task_dealloc(pygear_TaskObject* self){
         gearman_task_free(self->g_Task);
         self->g_Task = NULL;
     }
-    Py_XDECREF(self->pickle);
+    Py_XDECREF(self->serializer);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -127,8 +127,8 @@ static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* a
     }
 
     Py_INCREF(serializer);
-    Py_XDECREF(self->pickle);
-    self->pickle = serializer;
+    Py_XDECREF(self->serializer);
+    self->serializer = serializer;
 
     Py_RETURN_NONE;
 }
@@ -146,7 +146,7 @@ static PyObject* pygear_task_result(pygear_TaskObject* self){
         PyErr_SetString(PyExc_SystemError, "Failed to build value from Task result\n");
         return NULL;
     }
-    PyObject* unpickled_result = PyObject_CallMethod(self->pickle, "loads", "O", py_result);
+    PyObject* unpickled_result = PyObject_CallMethod(self->serializer, "loads", "O", py_result);
     if (!unpickled_result){
         PyErr_SetString(PyExc_SystemError," Failed to unpickle internal Task data\n");
         return NULL;

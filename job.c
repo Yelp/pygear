@@ -39,14 +39,14 @@ PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
     if (self != NULL) {
         self->g_Job = NULL;
     }
-    self->pickle = NULL;
+    self->serializer = NULL;
     return (PyObject *)self;
 }
 
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds){
     self->g_Job = NULL;
-    self->pickle = PyImport_ImportModule(PYTHON_SERIALIZER);
-    if (self->pickle == NULL){
+    self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
+    if (self->serializer == NULL){
         PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
         return -1;
     }
@@ -58,7 +58,7 @@ void Job_dealloc(pygear_JobObject* self){
         gearman_job_free(self->g_Job);
         self->g_Job = NULL;
     }
-    Py_XDECREF(self->pickle);
+    Py_XDECREF(self->serializer);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -84,8 +84,8 @@ static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* arg
     }
 
     Py_INCREF(serializer);
-    Py_XDECREF(self->pickle);
-    self->pickle = serializer;
+    Py_XDECREF(self->serializer);
+    self->serializer = serializer;
 
     Py_RETURN_NONE;
 }
@@ -96,7 +96,7 @@ static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
     if (!PyArg_ParseTuple(args, "O", &data)){
         return NULL;
     }
-    PyObject* pickled_data = PyObject_CallMethod(self->pickle, "dumps", "O", data);
+    PyObject* pickled_data = PyObject_CallMethod(self->serializer, "dumps", "O", data);
     if (!pickled_data){
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_data data for transport\n");
         return NULL;
@@ -118,7 +118,7 @@ static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args)
     if (!PyArg_ParseTuple(args, "O", &data)){
         return NULL;
     }
-    PyObject* pickled_data = PyObject_CallMethod(self->pickle, "dumps", "O", data);
+    PyObject* pickled_data = PyObject_CallMethod(self->serializer, "dumps", "O", data);
     if (!pickled_data){
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_warning data for transport\n");
         return NULL;
@@ -152,7 +152,7 @@ static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args
     if (!PyArg_ParseTuple(args, "O", &result)){
         return NULL;
     }
-    PyObject* pickled_result = PyObject_CallMethod(self->pickle, "dumps", "O", result);
+    PyObject* pickled_result = PyObject_CallMethod(self->serializer, "dumps", "O", result);
     if (!pickled_result){
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_complete data for transport\n");
         return NULL;
@@ -174,7 +174,7 @@ static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* arg
     if (!PyArg_ParseTuple(args, "O", &data)){
         return NULL;
     }
-    PyObject* pickled_data = PyObject_CallMethod(self->pickle, "dumps", "O", data);
+    PyObject* pickled_data = PyObject_CallMethod(self->serializer, "dumps", "O", data);
     if (!pickled_data){
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_exception data for transport\n");
         return NULL;
@@ -216,7 +216,7 @@ static PyObject* pygear_job_workload(pygear_JobObject* self){
     const char* job_workload = gearman_job_workload(self->g_Job);
     size_t job_size = gearman_job_workload_size(self->g_Job);
     PyObject* py_result = Py_BuildValue("s#", job_workload, job_size);
-    PyObject* py_workload = PyObject_CallMethod(self->pickle, "loads", "S", py_result);
+    PyObject* py_workload = PyObject_CallMethod(self->serializer, "loads", "S", py_result);
     return py_workload;
 }
 

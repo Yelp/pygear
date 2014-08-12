@@ -44,7 +44,7 @@
 typedef struct {
     PyObject_HEAD
     struct gearman_job_st* g_Job;
-    PyObject* pickle;
+    PyObject* serializer;
 } pygear_JobObject;
 
 PyDoc_STRVAR(job_module_docstring, "Represents a Gearman job");

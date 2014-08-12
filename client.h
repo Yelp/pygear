@@ -54,7 +54,7 @@ typedef struct {
     PyObject* cb_exception;
     PyObject* cb_fail;
     PyObject* cb_log;
-    PyObject* pickle;
+    PyObject* serializer;
 } pygear_ClientObject;
 
 PyDoc_STRVAR(client_module_docstring, "Represents a Gearman client");
