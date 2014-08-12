@@ -29,7 +29,7 @@
 #ifndef PYGEAR_H
 #define PYGEAR_H
 
-#define PYTHON_SERIALIZER "pickle"
+#define PYTHON_SERIALIZER "json"
 
 #include <Python.h>
 #include <libgearman-1.0/gearman.h>
