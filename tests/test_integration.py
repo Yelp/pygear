@@ -4,14 +4,11 @@ import multiprocessing
 from mock import Mock
 import sys
 
-TEST_GEARMAN_SERVERS = ["srv1-devc"]
-TEST_TIMEOUT_SECONDS = 15
+from . import TEST_GEARMAN_SERVERS, TEST_TIMEOUT_SECONDS
 
 class TestError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
+    pass
+
 
 @pytest.fixture
 def c():

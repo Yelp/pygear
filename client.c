@@ -45,22 +45,15 @@ PyObject* Client_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 
 int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
     self->g_Client = gearman_client_create(NULL);
-    self->pickle = PyImport_ImportModule("cPickle");
-    if (!self->pickle){
-        PyErr_Clear();
-        self->pickle = PyImport_ImportModule("pickle");
+    self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
+    if (self->serializer == NULL){
+        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+        return -1;
     }
     if (self->g_Client == NULL){
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman client structure");
         return -1;
     }
-    if (self->pickle == NULL) {
-        PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
-        return -1;
-    }
-
-    const char *EXCEPTIONS="exceptions";
-    gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
 
     // Callbacks
     self->cb_workload = NULL;
@@ -91,7 +84,7 @@ void Client_dealloc(pygear_ClientObject* self){
     Py_XDECREF(self->cb_exception);
     Py_XDECREF(self->cb_fail);
 
-    Py_XDECREF(self->pickle);
+    Py_XDECREF(self->serializer);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -119,8 +112,8 @@ static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObjec
     }
 
     Py_INCREF(serializer);
-    Py_XDECREF(self->pickle);
-    self->pickle = serializer;
+    Py_XDECREF(self->serializer);
+    self->serializer = serializer;
 
     Py_RETURN_NONE;
 }
@@ -163,7 +156,7 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList);
     python_task->g_Task = new_task;
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->pickle)){
+    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer)){
         return NULL;
     }
 
@@ -310,6 +303,8 @@ static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* a
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
+    const char *EXCEPTIONS="exceptions";
+    gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
     Py_RETURN_NONE;
 }
 
@@ -337,6 +332,8 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
             return NULL;
         }
     }
+    const char *EXCEPTIONS="exceptions";
+    gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
     Py_RETURN_NONE;
 }
 
@@ -371,7 +368,7 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
 \
     size_t result_size; \
     gearman_return_t ret_ptr; \
-    PyObject* pickled_input = PyObject_CallMethod(self->pickle, "dumps", "O", workload); \
+    PyObject* pickled_input = PyObject_CallMethod(self->serializer, "dumps", "O", workload); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
 \
     void* work_result = gearman_client_do##DOTYPE(self->g_Client, \
@@ -387,7 +384,7 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
     if (py_result == Py_None){ \
         Py_RETURN_NONE; \
     } \
-    return PyObject_CallMethod(self->pickle, "loads", "O", py_result); \
+    return PyObject_CallMethod(self->serializer, "loads", "O", py_result); \
 }
 
 #define CLIENT_DO_BACKGROUND(DOTYPE) \
@@ -408,7 +405,7 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
     } \
 \
     char* job_handle = malloc(sizeof(char) * GEARMAN_JOB_HANDLE_SIZE); \
-    PyObject* pickled_input = PyObject_CallMethod(self->pickle, "dumps", "O", workload); \
+    PyObject* pickled_input = PyObject_CallMethod(self->serializer, "dumps", "O", workload); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
 \
     gearman_return_t work_result = gearman_client_do##DOTYPE##_background( \
@@ -530,7 +527,7 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
         &function_name, &workload, &unique)){ \
         return NULL; \
     } \
-    PyObject* pickled_input = PyObject_CallMethod(self->pickle, "dumps", "O", workload); \
+    PyObject* pickled_input = PyObject_CallMethod(self->serializer, "dumps", "O", workload); \
     if (!pickled_input){ \
         return NULL; \
     } \
@@ -547,7 +544,7 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
 \
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->pickle)){ \
+    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer)){ \
         return NULL; \
     } \
     python_task->g_Task = new_task; \
@@ -603,7 +600,7 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
     PyGILState_STATE gstate = PyGILState_Ensure(); \
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", client->pickle)){ \
+    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", client->serializer)){ \
         PyErr_Print(); \
         PyGILState_Release(gstate); \
         return GEARMAN_ERROR; \

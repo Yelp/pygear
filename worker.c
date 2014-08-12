@@ -47,10 +47,10 @@ PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds){
     self->g_Worker = gearman_worker_create(NULL);
     self->g_FunctionMap = PyDict_New();
-    self->pickle = PyImport_ImportModule("cPickle");
-    if (!self->pickle){
-        PyErr_Clear();
-        self->pickle = PyImport_ImportModule("pickle");
+    self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
+    if (self->serializer == NULL){
+        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+        return -1;
     }
     if (self->g_Worker == NULL){
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman worker structure");
@@ -58,10 +58,6 @@ int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds){
     }
     if (self->g_FunctionMap == NULL){
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary");
-        return -1;
-    }
-    if (self->pickle == NULL){
-        PyErr_SetString(PyExc_ImportError, "Failed to import 'pickle'");
         return -1;
     }
     return 0;
@@ -74,7 +70,7 @@ void Worker_dealloc(pygear_WorkerObject* self){
     }
 
     Py_XDECREF(self->g_FunctionMap);
-    Py_XDECREF(self->pickle);
+    Py_XDECREF(self->serializer);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -101,8 +97,8 @@ static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObjec
     }
 
     Py_INCREF(serializer);
-    Py_XDECREF(self->pickle);
-    self->pickle = serializer;
+    Py_XDECREF(self->serializer);
+    self->serializer = serializer;
 
     Py_RETURN_NONE;
 }
@@ -378,7 +374,7 @@ static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
         PyErr_SetString(PyExc_RuntimeError, "Failed to instantiate new Job object");
         return NULL;
     }
-    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", self->pickle)){
+    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", self->serializer)){
         return NULL;
     }
     python_job->g_Job = new_job;
@@ -422,7 +418,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     // callback method
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
-    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", worker->pickle)){
+    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", worker->serializer)){
         return NULL;
     }
     python_job->g_Job = gear_job;
@@ -454,13 +450,61 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
         if (!pvalue){ pvalue = Py_None; }
         if (!ptraceback){ ptraceback = Py_None; }
 
-        PyObject* traceback = PyImport_ImportModule("traceback");
-        PyObject* string_traceback = PyObject_CallMethod(traceback, "format_tb", "O", ptraceback);
+        PyObject* ptype_repr = PyObject_Repr(ptype);
+        if (!ptype_repr){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to get repr of exception type\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
 
-        PyObject* error_tuple = Py_BuildValue("(O, O, O)", ptype, pvalue, string_traceback);
-        PyObject* pickled_data = PyObject_CallMethod(worker->pickle, "dumps", "(O)", error_tuple);
+        PyObject* pvalue_args = PyObject_GetAttrString(pvalue, "args");
+        if (!pvalue_args){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to extract args from exception\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
+        PyObject* traceback = PyImport_ImportModule("traceback");
+        if (!traceback){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to import traceback for error reporting\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
+        PyObject* string_traceback = PyObject_CallMethod(traceback, "format_tb", "O", ptraceback);
+        if (!string_traceback){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to get formatted traceback\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
+        PyObject* error_tuple = Py_BuildValue("(O, O, O)", ptype_repr, pvalue_args, string_traceback);
+        if (!error_tuple){
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed create tuple containing exception details\n");
+            }
+            PyGILState_Release(gstate);
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
+        }
+
+        PyObject* pickled_data = PyObject_CallMethod(worker->serializer, "dumps", "(O)", error_tuple);
         if (!pickled_data){
-            PyErr_SetString(PyExc_SystemError, "Failed to pickle exception data\n");
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to pickle exception data\n");
+            }
             PyGILState_Release(gstate);
             *ret_ptr = GEARMAN_FAIL;
             return NULL;
@@ -474,13 +518,16 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             return NULL;
         }
 
-        if (_pygear_check_and_raise_exn(gearman_job_send_exception(gear_job, c_data, c_data_size))){
-            PyErr_Print();
+        gearman_return_t exn_sent = gearman_job_send_exception(gear_job, c_data, c_data_size);
+        if (!gearman_success(exn_sent)){
+            PyErr_SetObject(PyExc_SystemError, PyString_FromFormat("Failed to send exception data for job: %s\n", gearman_strerror(exn_sent)));
+            *ret_ptr = GEARMAN_FAIL;
+            return NULL;
         }
 
     } else {
         // Try to pickle the return from the function
-        PyObject* pickled_result = PyObject_CallMethod(worker->pickle, "dumps", "O", callback_return);
+        PyObject* pickled_result = PyObject_CallMethod(worker->serializer, "dumps", "O", callback_return);
         if (!pickled_result){
             PyErr_SetString(PyExc_SystemError, "Failed to pickle worker result data\n");
             PyGILState_Release(gstate);
@@ -531,6 +578,9 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
 
 static PyObject* pygear_worker_work(pygear_WorkerObject* self){
     gearman_return_t result  = gearman_worker_work(self->g_Worker);
+    if (PyErr_Occurred()){
+        return NULL;
+    }
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
