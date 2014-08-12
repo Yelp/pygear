@@ -55,9 +55,6 @@ int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
         return -1;
     }
 
-    const char *EXCEPTIONS="exceptions";
-    gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
-
     // Callbacks
     self->cb_workload = NULL;
     self->cb_created = NULL;
@@ -306,6 +303,8 @@ static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* a
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
+    const char *EXCEPTIONS="exceptions";
+    gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
     Py_RETURN_NONE;
 }
 
@@ -333,6 +332,8 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
             return NULL;
         }
     }
+    const char *EXCEPTIONS="exceptions";
+    gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
     Py_RETURN_NONE;
 }
 
