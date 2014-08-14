@@ -417,7 +417,7 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
     if (_pygear_check_and_raise_exn(work_result)){ \
         return NULL; \
     } \
-    return Py_BuildValue("i", work_result); \
+    Py_RETURN_NONE; \
 }
 
 CLIENT_DO()
