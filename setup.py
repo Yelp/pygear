@@ -3,8 +3,8 @@ from setuptools import setup, Extension
 pygear = Extension(
         "pygear",
         sources = ["pygear.c"],
-        extra_link_args=["-lgearman"],
-        extra_compile_args=["-I/usr/include", "-I/usr/include/python2.7/"]
+        extra_link_args=["-l:libgearman.so.7"],
+        extra_compile_args=["-I/usr/local/include", "-I/usr/include/python2.6/"]
     )
 
 setup(
