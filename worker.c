@@ -500,10 +500,10 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             return NULL;
         }
 
-        PyObject* pickled_data = PyObject_CallMethod(worker->serializer, "dumps", "(O)", error_tuple);
-        if (!pickled_data){
+        PyObject* serialized_data = PyObject_CallMethod(worker->serializer, "dumps", "(O)", error_tuple);
+        if (!serialized_data){
             if (!PyErr_Occurred()){
-                PyErr_SetString(PyExc_SystemError, "Failed to pickle exception data\n");
+                PyErr_SetString(PyExc_SystemError, "Failed to serialize exception data\n");
             }
             PyGILState_Release(gstate);
             *ret_ptr = GEARMAN_FAIL;
@@ -511,8 +511,8 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
         }
 
         char* c_data; Py_ssize_t c_data_size;
-        if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
-            PyErr_SetString(PyExc_SystemError, "Failed to stringify pickled exception data\n");
+        if (PyString_AsStringAndSize(serialized_data, &c_data, &c_data_size) == -1){
+            PyErr_SetString(PyExc_SystemError, "Failed to stringify serialized exception data\n");
             PyGILState_Release(gstate);
             *ret_ptr = GEARMAN_FAIL;
             return NULL;
@@ -529,7 +529,9 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
         // Try to pickle the return from the function
         PyObject* pickled_result = PyObject_CallMethod(worker->serializer, "dumps", "O", callback_return);
         if (!pickled_result){
-            PyErr_SetString(PyExc_SystemError, "Failed to pickle worker result data\n");
+            if (!PyErr_Occurred()){
+                PyErr_SetString(PyExc_SystemError, "Failed to serialize worker result data\n");
+            }
             PyGILState_Release(gstate);
             *ret_ptr = GEARMAN_FAIL;
             return NULL;
