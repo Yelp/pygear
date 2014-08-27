@@ -23,7 +23,7 @@ def test_work_timeout(w):
         w.work()
 
 def test_worker_timeout(w):
-    assert w.timeout() == -1
+    assert w.timeout() == 10000
     w.set_timeout(30)
     assert w.timeout() == 30
 
