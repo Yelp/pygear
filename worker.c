@@ -527,7 +527,12 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     } else {
         // Try to pickle the return from the function
-        PyObject* pickled_result = PyObject_CallMethod(worker->serializer, "dumps", "O", callback_return);
+        PyObject* pickled_result = PyObject_CallMethodObjArgs(
+            worker->serializer,
+            PyString_FromString("dumps"),
+            callback_return,
+            NULL
+        );
         if (!pickled_result){
             if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_SystemError, "Failed to serialize worker result data\n");
