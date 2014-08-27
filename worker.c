@@ -46,6 +46,10 @@ PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds){
     self->g_Worker = gearman_worker_create(NULL);
+    gearman_worker_options_t worker_options = gearman_worker_options(self->g_Worker);
+    worker_options = worker_options & (~GEARMAN_WORKER_GRAB_ALL);
+    gearman_worker_set_options(self->g_Worker, worker_options);
+
     self->g_FunctionMap = PyDict_New();
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL){

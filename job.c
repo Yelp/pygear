@@ -216,7 +216,12 @@ static PyObject* pygear_job_workload(pygear_JobObject* self){
     const char* job_workload = gearman_job_workload(self->g_Job);
     size_t job_size = gearman_job_workload_size(self->g_Job);
     PyObject* py_result = Py_BuildValue("s#", job_workload, job_size);
-    PyObject* py_workload = PyObject_CallMethod(self->serializer, "loads", "S", py_result);
+    PyObject* py_workload = PyObject_CallMethodObjArgs(
+        self->serializer,
+        PyString_FromString("loads"),
+        py_result,
+        NULL
+    );
     return py_workload;
 }
 

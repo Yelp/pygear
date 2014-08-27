@@ -368,7 +368,12 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
 \
     size_t result_size; \
     gearman_return_t ret_ptr; \
-    PyObject* pickled_input = PyObject_CallMethod(self->serializer, "dumps", "O", workload); \
+    PyObject* pickled_input = PyObject_CallMethodObjArgs( \
+        self->serializer, \
+        PyString_FromString("dumps"), \
+        workload, \
+        NULL \
+    ); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
 \
     void* work_result = gearman_client_do##DOTYPE(self->g_Client, \
@@ -405,7 +410,12 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
     } \
 \
     char* job_handle = malloc(sizeof(char) * GEARMAN_JOB_HANDLE_SIZE); \
-    PyObject* pickled_input = PyObject_CallMethod(self->serializer, "dumps", "O", workload); \
+    PyObject* pickled_input = PyObject_CallMethodObjArgs( \
+        self->serializer, \
+        PyString_FromString("dumps"), \
+        workload, \
+        NULL \
+    ); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
 \
     gearman_return_t work_result = gearman_client_do##DOTYPE##_background( \
@@ -527,7 +537,12 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
         &function_name, &workload, &unique)){ \
         return NULL; \
     } \
-    PyObject* pickled_input = PyObject_CallMethod(self->serializer, "dumps", "O", workload); \
+    PyObject* pickled_input = PyObject_CallMethodObjArgs( \
+        self->serializer, \
+        PyString_FromString("dumps"), \
+        workload, \
+        NULL \
+    ); \
     if (!pickled_input){ \
         return NULL; \
     } \
