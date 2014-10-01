@@ -477,7 +477,13 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     PyObject* callback_return = NULL;
     PyObject* pickled_result = NULL;
 
-    bool success = false;
+    PyObject* ptype_repr = NULL;
+    PyObject* pvalue_args = NULL;
+    PyObject* traceback = NULL;
+    PyObject* string_traceback = NULL;
+    PyObject* error_tuple = NULL;
+    PyObject* serialized_data = NULL;
+    PyObject* err_string = NULL;
 
     if (python_cb_method == NULL) {
         PyErr_SetString(PyExc_SystemError, "Worker does not support method %s\n");
@@ -493,8 +499,6 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     if (!callmethod_result) {
         goto catch;
     }
-
-    success = true;
 
     python_job->g_Job = gear_job;
 
@@ -582,7 +586,10 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
         gearman_return_t exn_sent = gearman_job_send_exception(gear_job, c_data, c_data_size);
         if (!gearman_success(exn_sent)){
-            PyErr_SetObject(PyExc_SystemError, PyString_FromFormat("Failed to send exception data for job: %s\n", gearman_strerror(exn_sent)));
+            err_string = PyString_FromFormat("Failed to send exception data for job: %s\n", gearman_strerror(exn_sent));
+            PyErr_SetObject(PyExc_SystemError, err_string);
+
+            Py_XDECREF(err_string);
             *ret_ptr = GEARMAN_FAIL;
             return NULL;
         }
@@ -611,6 +618,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             }
         }
     }
+
     PyGILState_Release(gstate);
     return NULL;  
 
@@ -619,6 +627,15 @@ catch:
     Py_XDECREF(argList);
     Py_XDECREF(python_job);
     Py_XDECREF(callmethod_result);
+    Py_XDECREF(pickled_result);
+
+    Py_XDECREF(ptype_repr);
+    Py_XDECREF(pvalue_args);
+    Py_XDECREF(traceback);
+    Py_XDECREF(string_traceback);
+    Py_XDECREF(error_tuple);
+    Py_XDECREF(serialized_data);
+    Py_XDECREF(err_string);
 
     PyGILState_Release(gstate);
     *ret_ptr = GEARMAN_FAIL;
