@@ -108,11 +108,19 @@ static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObjec
 }
 
 static PyObject* pygear_worker_clone(pygear_WorkerObject* self){
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
-    pygear_WorkerObject* python_worker = (pygear_WorkerObject*) PyObject_CallObject((PyObject *) &pygear_WorkerType, argList);
 
+    PyObject *argList = NULL;
+    pygear_WorkerObject* python_worker = NULL;
+    PyObject* ret = NULL;
+
+    argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    python_worker = (pygear_WorkerObject*) PyObject_CallObject((PyObject *) &pygear_WorkerType, argList);
     python_worker->g_Worker = gearman_worker_clone(NULL, self->g_Worker);
-    return Py_BuildValue("O", python_worker);
+    ret = Py_BuildValue("O", python_worker);
+
+    Py_XDECREF(argList);
+    Py_XDECREF(python_worker);
+    return ret;
 }
 
 static PyObject* pygear_worker_error(pygear_WorkerObject* self){
@@ -165,7 +173,8 @@ static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* 
           GEARMAN_WORKER_MAX
     };
 
-    int worker_options[11];
+    int num_options = 11;
+    int worker_options[num_options];
 
     if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|iiiiiiiiiii", kwlist,
                                       &worker_options[0],
@@ -184,7 +193,7 @@ static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* 
     }
 
     int i;
-    for (i=0; i < 11; i++){
+    for (i = 0; i < num_options; ++i) {
         if (worker_options[i]){
             gearman_worker_add_options(self->g_Worker, options_t_value[i]);
         } else {
@@ -211,9 +220,10 @@ static PyObject* pygear_worker_get_options(pygear_WorkerObject* self){
 
     gearman_worker_options_t options = gearman_worker_options(self->g_Worker);
 
-    PyObject* worker_options[11];
+    int num_options = 11;
+    PyObject* worker_options[num_options];
     int i;
-    for (i=0; i < 11; i++){
+    for (i = 0; i < num_options; ++i) {
         worker_options[i] = (options & options_t_value[i] ? Py_True : Py_False);
     }
     PyObject* option_dictionary = Py_BuildValue(
@@ -230,6 +240,8 @@ static PyObject* pygear_worker_get_options(pygear_WorkerObject* self){
         PYGEAR_WORKER_MAX, worker_options[9],
         PYGEAR_WORKER_MAX, worker_options[10]
     );
+
+    Py_XDECREF(worker_options);
     return option_dictionary;
 }
 
@@ -252,13 +264,19 @@ static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t ve
 
     PyObject* python_cb_method = (PyObject*) context;
 
+    // new refs
     PyObject* python_line = PyString_FromString(line);
     PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_line);
+    
     if (!callback_return){
         if (PyErr_Occurred()){
             PyErr_Print();
         }
     }
+
+    // clean up
+    Py_XDECREF(python_line);
+    Py_XDECREF(callback_return);
 
     PyGILState_Release(gstate);
 }
@@ -271,6 +289,8 @@ static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* a
     }
     Py_INCREF(logging_cb);
     gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, logging_cb, log_level);
+    Py_DECREF(logging_cb);
+
     Py_RETURN_NONE;
 }
 
@@ -287,6 +307,7 @@ static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
+// TODO
 static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* args){
     PyObject* server_list;
     if (!PyArg_ParseTuple(args, "O", &server_list)){
@@ -360,6 +381,7 @@ static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self){
     Py_RETURN_NONE;
 }
 
+// TODO
 static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
     gearman_return_t result;
     gearman_job_st* new_job = gearman_worker_grab_job(self->g_Worker, NULL, &result);
@@ -403,6 +425,7 @@ static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObje
     return (func_exist ? Py_True : Py_False);
 }
 
+// TODO
 void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
                                    size_t* result_size, gearman_return_t* ret_ptr){
     PyGILState_STATE gstate = PyGILState_Ensure();
@@ -571,6 +594,7 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
 
     Py_INCREF(callback_method);
     PyDict_SetItemString(self->g_FunctionMap, function_name, callback_method);
+    Py_DECREF(callback_method);
 
     gearman_return_t result =
         gearman_worker_add_function(
