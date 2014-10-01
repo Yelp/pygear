@@ -474,6 +474,8 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     PyObject* argList = NULL;
     pygear_JobObject* python_job = NULL;
     PyObject* callmethod_result = NULL;
+    PyObject* callback_return = NULL;
+    PyObject* pickled_result = NULL;
 
     bool success = false;
 
@@ -496,8 +498,8 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     python_job->g_Job = gear_job;
 
-    PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
-    if (!callback_return){
+    callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
+    if (!callback_return) {
         if (!PyErr_Occurred()){
             // If the callback returned NULL but did not set an exception,
             // set a generic one to be sent back.
@@ -520,17 +522,19 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
         // The value and traceback object may be NULL even when the type object is not.
         // NULL values would break Py_BuildValue below, so switch them to None
-        if (!pvalue){ pvalue = Py_None; }
-        if (!ptraceback){ ptraceback = Py_None; }
+        if (!pvalue) {
+            pvalue = Py_None;
+        }
+        if (!ptraceback) {
+            ptraceback = Py_None;
+        }
 
         PyObject* ptype_repr = PyObject_Repr(ptype);
         if (!ptype_repr){
             if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_SystemError, "Failed to get repr of exception type\n");
             }
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
 
         PyObject* pvalue_args = PyObject_GetAttrString(pvalue, "args");
@@ -538,9 +542,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_SystemError, "Failed to extract args from exception\n");
             }
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
 
         PyObject* traceback = PyImport_ImportModule("traceback");
@@ -548,9 +550,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_SystemError, "Failed to import traceback for error reporting\n");
             }
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
 
         PyObject* string_traceback = PyObject_CallMethod(traceback, "format_tb", "O", ptraceback);
@@ -558,37 +558,26 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_SystemError, "Failed to get formatted traceback\n");
             }
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
-
         PyObject* error_tuple = Py_BuildValue("(O, O, O)", ptype_repr, pvalue_args, string_traceback);
         if (!error_tuple){
             if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_SystemError, "Failed create tuple containing exception details\n");
             }
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
-
         PyObject* serialized_data = PyObject_CallMethod(worker->serializer, "dumps", "(O)", error_tuple);
         if (!serialized_data){
             if (!PyErr_Occurred()){
                 PyErr_SetString(PyExc_SystemError, "Failed to serialize exception data\n");
             }
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
-
         char* c_data; Py_ssize_t c_data_size;
         if (PyString_AsStringAndSize(serialized_data, &c_data, &c_data_size) == -1){
             PyErr_SetString(PyExc_SystemError, "Failed to stringify serialized exception data\n");
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
 
         gearman_return_t exn_sent = gearman_job_send_exception(gear_job, c_data, c_data_size);
@@ -600,24 +589,22 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     } else {
         // Try to pickle the return from the function
-        PyObject* pickled_result = PyObject_CallMethodObjArgs(
+        pickled_result = PyObject_CallMethodObjArgs(
             worker->serializer,
             PyString_FromString("dumps"),
             callback_return,
             NULL
         );
-        if (!pickled_result){
-            if (!PyErr_Occurred()){
+        if (!pickled_result) {
+            if (!PyErr_Occurred()) {
                 PyErr_SetString(PyExc_SystemError, "Failed to serialize worker result data\n");
             }
-            PyGILState_Release(gstate);
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         } else {
             Py_ssize_t len;
             char* buffer;
             PyString_AsStringAndSize(pickled_result, &buffer, &len);
-            if (_pygear_check_and_raise_exn(gearman_job_send_complete(gear_job, buffer, len))){
+            if (_pygear_check_and_raise_exn(gearman_job_send_complete(gear_job, buffer, len))) {
                 PyErr_Print();
             } else {
                 *ret_ptr = GEARMAN_SUCCESS;
