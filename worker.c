@@ -307,32 +307,48 @@ static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
-// TODO
 static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* args){
+    // borrowed refs
     PyObject* server_list;
+    char* err_base = NULL;
+    char* srv_string = NULL;
+    // new refs
+    PyTypeObject* arg_type = NULL;
+    char* err_string = NULL;
+
+    bool success = false;
     if (!PyArg_ParseTuple(args, "O", &server_list)){
-        return NULL;
+        goto catch;
     }
     if (!PyList_Check(server_list)){
-        PyTypeObject* arg_type = (PyTypeObject*) PyObject_Type(server_list);
-        char* err_base = "Worker.add_servers expected list, got ";
-        char* err_string = malloc(sizeof(char) * (strlen(err_base) + strlen(arg_type->tp_name) + 1));
+        arg_type = (PyTypeObject*) PyObject_Type(server_list);
+        err_base = "Worker.add_servers expected list, got ";
+        err_string = malloc(sizeof(char) * (strlen(err_base) + strlen(arg_type->tp_name) + 1));
         sprintf(err_string, "%s%s", err_base, arg_type->tp_name);
         PyErr_SetString(PyExc_TypeError, err_string);
-        return NULL;
+        goto catch;
     }
 
     Py_ssize_t num_servers = PyList_Size(server_list);
     Py_ssize_t i;
-    for (i=0; i < num_servers; i++){
-        char* srv_string = PyString_AsString(PyList_GetItem(server_list, i));
+    for (i = 0; i < num_servers; ++i) {
+        srv_string = PyString_AsString(PyList_GetItem(server_list, i));
         gearman_return_t result = gearman_worker_add_servers(self->g_Worker, srv_string);
-
         if (_pygear_check_and_raise_exn(result)){
-            return NULL;
+            goto catch;
         }
     }
-    Py_RETURN_NONE;
+    success = true;
+
+catch:
+    // clean up
+    Py_XDECREF(arg_type);
+    free(err_string);
+
+    if (success) {
+        Py_RETURN_NONE;
+    }
+    return NULL;
 }
 
 static PyObject* pygear_worker_remove_servers(pygear_WorkerObject* self){
@@ -381,31 +397,50 @@ static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self){
     Py_RETURN_NONE;
 }
 
-// TODO
 static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self){
     gearman_return_t result;
     gearman_job_st* new_job = gearman_worker_grab_job(self->g_Worker, NULL, &result);
 
-    if (_pygear_check_and_raise_exn(result)){
-        return NULL;
-    }
+    // new refs
+    PyObject* argList = NULL;
+    pygear_JobObject* python_job = NULL;
+    PyObject* callmethod_result = NULL;
+    PyObject* ret = NULL;
 
-    PyObject* argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    bool success = false;
+
+    if (_pygear_check_and_raise_exn(result)){
+        goto catch;
+    }
+    argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     if (argList == NULL){
         PyErr_SetString(PyExc_RuntimeError, "Failed to instantiate argument tuple for new Job object");
-        return NULL;
+        goto catch;
     }
-    pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
+    python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
     if (python_job == NULL){
         PyErr_SetString(PyExc_RuntimeError, "Failed to instantiate new Job object");
-        return NULL;
+        goto catch;
     }
-    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", self->serializer)){
-        return NULL;
+    callmethod_result = PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", self->serializer);
+    if (!callmethod_result) {
+        goto catch;
     }
-    python_job->g_Job = new_job;
 
-    return Py_BuildValue("O", python_job);
+    python_job->g_Job = new_job;
+    success = true;
+    ret = Py_BuildValue("O", python_job);
+
+catch:
+    // clean up
+    Py_XDECREF(argList);
+    Py_XDECREF(python_job);
+    Py_XDECREF(callmethod_result);
+
+    if (success) {
+        return ret;
+    }
+    return NULL;
 }
 
 static PyObject* pygear_worker_free_all(pygear_WorkerObject* self){
@@ -430,24 +465,35 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
                                    size_t* result_size, gearman_return_t* ret_ptr){
     PyGILState_STATE gstate = PyGILState_Ensure();
 
+    // borrowed refs
     pygear_WorkerObject* worker = ((pygear_WorkerObject*) context);
     const char* job_func_name = gearman_job_function_name(gear_job);
     PyObject* python_cb_method = PyDict_GetItemString(worker->g_FunctionMap, job_func_name);
 
-    if (python_cb_method == NULL){
+    // new refs
+    PyObject* argList = NULL;
+    pygear_JobObject* python_job = NULL;
+    PyObject* callmethod_result = NULL;
+
+    bool success = false;
+
+    if (python_cb_method == NULL) {
         PyErr_SetString(PyExc_SystemError, "Worker does not support method %s\n");
-        PyGILState_Release(gstate);
-        *ret_ptr = GEARMAN_FAIL;
-        return NULL;
+        goto catch;
     }
 
     // Bind the job into a python representation, and call through the python
     // callback method
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
-    pygear_JobObject* python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
-    if (!PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", worker->serializer)){
-        return NULL;
+    argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    python_job = (pygear_JobObject*) PyObject_CallObject((PyObject *) &pygear_JobType, argList);
+    callmethod_result = PyObject_CallMethod((PyObject*) python_job, "set_serializer", "O", worker->serializer);
+
+    if (!callmethod_result) {
+        goto catch;
     }
+
+    success = true;
+
     python_job->g_Job = gear_job;
 
     PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
@@ -578,8 +624,17 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             }
         }
     }
+    PyGILState_Release(gstate);
+    return NULL;  
+
+catch:
+    // clean up
+    Py_XDECREF(argList);
+    Py_XDECREF(python_job);
+    Py_XDECREF(callmethod_result);
 
     PyGILState_Release(gstate);
+    *ret_ptr = GEARMAN_FAIL;
     return NULL;
 }
 
