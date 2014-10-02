@@ -277,7 +277,6 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self){
         CLIENT_OPT_GENERATE_UNIQUE, client_options[3]
     );
 
-    // FIXME: should Py_True / Py_False be treated like an object?
     return option_dictionary;
 }
 
@@ -447,13 +446,16 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
     } \
 \
     char* job_handle = malloc(sizeof(char) * GEARMAN_JOB_HANDLE_SIZE); \
+    PyObject* dumpstr = PyString_FromString("dumps"); \
     PyObject* pickled_input = PyObject_CallMethodObjArgs( \
         self->serializer, \
-        PyString_FromString("dumps"), \
+        dumpstr, \
         workload, \
         NULL \
     ); \
+    Py_XDECREF(dumpstr); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
+    Py_XDECREF(pickled_input); \
 \
     gearman_return_t work_result = gearman_client_do##DOTYPE##_background( \
         self->g_Client, \
@@ -461,6 +463,10 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
         unique, \
         workload_string, workload_size, \
         job_handle); \
+\
+    if (job_handle != NULL) { \
+        free(job_handle); \
+    } \
     if (_pygear_check_and_raise_exn(work_result)){ \
         return NULL; \
     } \
