@@ -119,6 +119,9 @@ static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObjec
 }
 
 static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
+
+    PyObject* ret = NULL;
+
     // Mandatory arguments
     char* function_name;
     char* workload;
@@ -153,21 +156,29 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
         return NULL;
     }
 
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    PyObject* argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList);
     python_task->g_Task = new_task;
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer)){
-        return NULL;
-    }
+    PyObject* method_result = PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer);
 
-    if (_pygear_check_and_raise_exn(gearman_task_return(new_task))){
-        return NULL;
+    if (!method_result) {
+        goto catch;
+    }
+    if (_pygear_check_and_raise_exn(gearman_task_return(new_task))) {
+        goto catch;
     }
 
     gearman_result_st *result= gearman_task_result(new_task);
     int result_size = gearman_result_size(result);
     const char* result_data = gearman_result_value(result);
-    return Py_BuildValue("s#", result_data, result_size);
+    ret = Py_BuildValue("s#", result_data, result_size);
+
+catch:
+    Py_XDECREF(argList);
+    Py_XDECREF(python_task);
+    Py_XDECREF(method_result);
+
+    return ret;
 }
 
 static PyObject* pygear_client_clone(pygear_ClientObject* self){

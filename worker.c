@@ -459,7 +459,6 @@ static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObje
     return (func_exist ? Py_True : Py_False);
 }
 
-// TODO
 void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
                                    size_t* result_size, gearman_return_t* ret_ptr) {
     PyGILState_STATE gstate = PyGILState_Ensure();
@@ -482,6 +481,11 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     PyObject* error_tuple = NULL;
     PyObject* serialized_data = NULL;
 
+    enum {FAIL, SUCCESS, UNDEFINED};
+    int retptr = FAIL;
+
+    printf("GEARMAN? %d\n", *ret_ptr);
+
     if (python_cb_method == NULL) {
         PyErr_SetString(PyExc_SystemError, "Worker does not support method %s\n");
         goto catch;
@@ -498,7 +502,9 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     python_job->g_Job = gear_job;
 
     callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
+
     if (!callback_return) {
+
         if (!PyErr_Occurred()) {
             // If the callback returned NULL but did not set an exception, set a generic one to be sent back.
             PyErr_SetObject(
@@ -585,7 +591,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             goto catch;
         }
 
-        // FIXME: this branch of condition is undefined
+        retptr = UNDEFINED;
 
     } else {
         // Try to pickle the return from the function
@@ -607,29 +613,15 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             PyString_AsStringAndSize(pickled_result, &buffer, &len);
             if (_pygear_check_and_raise_exn(gearman_job_send_complete(gear_job, buffer, len))) {
                 PyErr_Print();
-                // FIXME (paiwei) *ret_ptr is undefined in this branch and it proceed as success.
+
+                retptr = UNDEFINED;
+
             } else {
-                printf("success\n");
-                *ret_ptr = GEARMAN_SUCCESS;
+                
+                retptr = SUCCESS;
             }
         }
     }
-
-    // clean up
-    Py_XDECREF(pickled_result);
-    Py_XDECREF(callmethod_result);
-    Py_XDECREF(argList);
-    Py_XDECREF(ptype_repr);
-    Py_XDECREF(pvalue_args);
-    Py_XDECREF(traceback);
-    Py_XDECREF(string_traceback);
-    Py_XDECREF(error_tuple);
-    Py_XDECREF(serialized_data);
-    python_job->g_Job = NULL;
-    Py_XDECREF(python_job);
-
-    PyGILState_Release(gstate);
-    return NULL; 
 
 catch:
 
@@ -647,7 +639,13 @@ catch:
     Py_XDECREF(python_job);
 
     PyGILState_Release(gstate);
-    *ret_ptr = GEARMAN_FAIL;
+    if (retptr == SUCCESS) {
+        *ret_ptr = GEARMAN_SUCCESS;
+    } else if (retptr == FAIL) {
+        *ret_ptr = GEARMAN_FAIL;
+    } else { 
+        // ret_ptr remain unchanged as input
+    }
     return NULL;
 }
 
