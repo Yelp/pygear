@@ -461,10 +461,7 @@ static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObje
 
 // TODO
 void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
-                                   size_t* result_size, gearman_return_t* ret_ptr){
-
-    printf("mapper\n");
-
+                                   size_t* result_size, gearman_return_t* ret_ptr) {
     PyGILState_STATE gstate = PyGILState_Ensure();
 
     // borrowed refs
@@ -478,7 +475,6 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     PyObject* callmethod_result = NULL;
     PyObject* callback_return = NULL;
     PyObject* pickled_result = NULL;
-
     PyObject* ptype_repr = NULL;
     PyObject* pvalue_args = NULL;
     PyObject* traceback = NULL;
@@ -503,9 +499,8 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     callback_return = PyObject_CallFunction(python_cb_method, "O", python_job);
     if (!callback_return) {
-        if (!PyErr_Occurred()){
-            // If the callback returned NULL but did not set an exception,
-            // set a generic one to be sent back.
+        if (!PyErr_Occurred()) {
+            // If the callback returned NULL but did not set an exception, set a generic one to be sent back.
             PyErr_SetObject(
                 PyGearExn_ERROR,
                 PyString_FromFormat(
@@ -515,7 +510,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             );
         }
 
-        PyObject *ptype, *pvalue, *ptraceback; // missing Py_XDECREF ?
+        PyObject *ptype, *pvalue, *ptraceback; // FIXME: missing Py_XDECREF
         PyErr_Fetch(&ptype, &pvalue, &ptraceback);
         Py_XINCREF(ptype);
         Py_XINCREF(pvalue);
@@ -533,9 +528,6 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             ptraceback = Py_None;
         }
 
-        // ptype_repr, pvalue_args, traceback, string_traceback, error_tuple, serialized_data
-        // are all new references and should be freed before returning to the caller function
-        // if there is any exception/error, need to rearrange the code
         ptype_repr = PyObject_Repr(ptype);
         if (!ptype_repr){
             if (!PyErr_Occurred()){
@@ -590,13 +582,10 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             PyObject* err_string = PyString_FromFormat("Failed to send exception data for job: %s\n", gearman_strerror(exn_sent));
             PyErr_SetObject(PyExc_SystemError, err_string);
             Py_XDECREF(err_string);
-
-            // FIXEME: (paiwei) why no PyGILState_Release / cleanup needed.
-            *ret_ptr = GEARMAN_FAIL;
-            return NULL;
+            goto catch;
         }
 
-        // FIXME: (pai-wei) this branch of condition is undefined
+        // FIXME: this branch of condition is undefined
 
     } else {
         // Try to pickle the return from the function
@@ -630,31 +619,32 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     Py_XDECREF(pickled_result);
     Py_XDECREF(callmethod_result);
     Py_XDECREF(argList);
-
     Py_XDECREF(ptype_repr);
     Py_XDECREF(pvalue_args);
     Py_XDECREF(traceback);
     Py_XDECREF(string_traceback);
     Py_XDECREF(error_tuple);
     Py_XDECREF(serialized_data);
+    python_job->g_Job = NULL;
+    Py_XDECREF(python_job);
 
-    // FIXME: (paiwei) dealloc this causes seg fault and still checking why
-    // Py_XDECREF(python_job);
     PyGILState_Release(gstate);
     return NULL; 
 
-catch: // catch errors
+catch:
+
     // clean up
-    Py_XDECREF(argList);
-    Py_XDECREF(python_job);
-    Py_XDECREF(callmethod_result);
     Py_XDECREF(pickled_result);
+    Py_XDECREF(callmethod_result);
+    Py_XDECREF(argList);
     Py_XDECREF(ptype_repr);
     Py_XDECREF(pvalue_args);
     Py_XDECREF(traceback);
     Py_XDECREF(string_traceback);
     Py_XDECREF(error_tuple);
     Py_XDECREF(serialized_data);
+    python_job->g_Job = NULL;
+    Py_XDECREF(python_job);
 
     PyGILState_Release(gstate);
     *ret_ptr = GEARMAN_FAIL;
