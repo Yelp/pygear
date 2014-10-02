@@ -342,7 +342,9 @@ static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* 
 catch:
     // clean up
     Py_XDECREF(arg_type);
-    free(err_string);
+    if (err_string != NULL) {
+        free(err_string);
+    }
 
     if (success) {
         Py_RETURN_NONE;
@@ -483,8 +485,6 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     enum {FAIL, SUCCESS, UNDEFINED};
     int retptr = FAIL;
-
-    printf("GEARMAN? %d\n", *ret_ptr);
 
     if (python_cb_method == NULL) {
         PyErr_SetString(PyExc_SystemError, "Worker does not support method %s\n");
