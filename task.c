@@ -147,6 +147,7 @@ static PyObject* pygear_task_result(pygear_TaskObject* self){
         return NULL;
     }
     PyObject* unpickled_result = PyObject_CallMethod(self->serializer, "loads", "O", py_result);
+    Py_XDECREF(py_result);
     if (!unpickled_result){
         PyErr_SetString(PyExc_SystemError," Failed to unpickle internal Task data\n");
         return NULL;

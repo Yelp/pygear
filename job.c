@@ -103,9 +103,11 @@ static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
     }
     char* c_data; Py_ssize_t c_data_size;
     if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+        Py_XDECREF(pickled_data);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled data to C string");
         return NULL;
     }
+    Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_data(self->g_Job, c_data, c_data_size);
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
@@ -125,9 +127,11 @@ static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args)
     }
     char* c_data; Py_ssize_t c_data_size;
     if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+        Py_XDECREF(pickled_data);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled warning data to C string");
         return NULL;
     }
+    Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_warning(self->g_Job, c_data, c_data_size);
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
@@ -159,9 +163,11 @@ static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args
     }
     char* c_result; Py_ssize_t c_result_size;
     if (PyString_AsStringAndSize(pickled_result, &c_result, &c_result_size) == -1){
+        Py_XDECREF(pickled_result);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled complete data to C string");
         return NULL;
     }
+    Py_XDECREF(pickled_result); 
     gearman_return_t gearman_result = gearman_job_send_complete(self->g_Job, c_result, c_result_size);
     if (_pygear_check_and_raise_exn(gearman_result)){
         return NULL;
@@ -182,9 +188,11 @@ static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* arg
 
     char* c_data; Py_ssize_t c_data_size;
     if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+        Py_XDECREF(pickled_data);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled exception data to C string");
         return NULL;
     }
+    Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_exception(self->g_Job, c_data, c_data_size);
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
@@ -216,12 +224,15 @@ static PyObject* pygear_job_workload(pygear_JobObject* self){
     const char* job_workload = gearman_job_workload(self->g_Job);
     size_t job_size = gearman_job_workload_size(self->g_Job);
     PyObject* py_result = Py_BuildValue("s#", job_workload, job_size);
+    PyObject* loadstr = PyString_FromString("loads");
     PyObject* py_workload = PyObject_CallMethodObjArgs(
         self->serializer,
-        PyString_FromString("loads"),
+        loadstr,
         py_result,
         NULL
     );
+    Py_XDECREF(py_result);
+    Py_XDECREF(loadstr);
     return py_workload;
 }
 
