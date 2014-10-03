@@ -391,66 +391,137 @@ catch:
 }
 
 
-// TODO
-static PyObject* pygear_admin_status(pygear_AdminObject* self){
-    PyObject* raw_result = _pygear_admin_make_call(self, "status\r\n", "\n.\n");
-    if (!raw_result) { return NULL; }
-    if (_check_and_raise_server_error(raw_result)){
-        return NULL;
-    }
-    PyObject* status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
-    if (!status_string) { return NULL; }
-    PyObject* status_string_trip = PyObject_CallMethod(status_string, "strip", "");
-    if (!status_string_trip) { return NULL; }
-    PyObject* status_list = PyObject_CallMethod(status_string_trip, "split", "s", "\n");
-    if (!status_list) { return NULL; }
-    PyObject* status_dict_list = PyList_New(0);
-    if (!status_dict_list) { return NULL; }
-    int status_i;
-    for (status_i=0; status_i <  PyList_Size(status_list); status_i++){
-        PyObject* status_line = PyList_GetItem(status_list, status_i);
-        if (!status_line) { return NULL; }
-        PyObject* status_line_list = PyObject_CallMethod(status_line, "split", "s", "\t");
-        if (!status_line_list) { return NULL; }
+static PyObject* pygear_admin_status(pygear_AdminObject* self) {
+    // new refs
+    PyObject* raw_result = NULL; 
+    PyObject* status_string = NULL;
+    PyObject* status_string_trip = NULL;
+    PyObject* status_list = NULL;
+    PyObject* status_dict_list = NULL;
+    PyObject* status_line_list = NULL;
 
+    PyObject* statfield_1_new = NULL;
+    PyObject* statfield_2_new = NULL;
+    PyObject* statfield_3_new = NULL;
+
+    PyObject* key0 = NULL;
+    PyObject* key1 = NULL; 
+    PyObject* key2 = NULL;
+    PyObject* key3 = NULL;
+
+    raw_result = _pygear_admin_make_call(self, "status\r\n", "\n.\n");
+    if (!raw_result) {
+        goto catch;
+    }
+    if (_check_and_raise_server_error(raw_result)) {
+        goto catch;
+    }
+    status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
+    if (!status_string) {
+        goto catch;
+    }
+    status_string_trip = PyObject_CallMethod(status_string, "strip", "");
+    if (!status_string_trip) {
+        goto catch;
+    }
+    status_list = PyObject_CallMethod(status_string_trip, "split", "s", "\n");
+    if (!status_list) {
+        goto catch;
+    }
+    status_dict_list = PyList_New(0);
+    if (!status_dict_list) {
+        goto catch;
+    }
+
+    key0 = PyString_FromString("function");
+    key1 = PyString_FromString("total");
+    key2 = PyString_FromString("running");
+    key3 = PyString_FromString("available_workers");
+
+    int status_i;
+    for (status_i = 0; status_i < PyList_Size(status_list); status_i++) {
+
+        PyObject* status_line = PyList_GetItem(status_list, status_i);
+        if (!status_line) {
+            goto catch;
+        }
+        status_line_list = PyObject_CallMethod(status_line, "split", "s", "\t");
+        if (!status_line_list) {
+            goto catch;
+        }
         // If the server status is empty, we will get a line with only one entry.
         // It should be skipped.
-        if (PyList_Size(status_line_list) < 4){
+        if (PyList_Size(status_line_list) < 4) {
             continue;
         }
 
         PyObject* statfield_0 = PyList_GetItem(status_line_list, 0);
-        if (!statfield_0) { return NULL; }
-
+        if (!statfield_0) {
+            goto catch;
+        }
         PyObject* statfield_1 = PyList_GetItem(status_line_list, 1);
-        if (!statfield_1) { return NULL; }
-        statfield_1 = PyNumber_Int(statfield_1);
-        if (!statfield_1) { return NULL; }
-
+        if (!statfield_1) {
+            goto catch;
+        }
         PyObject* statfield_2 = PyList_GetItem(status_line_list, 2);
-        if (!statfield_2) { return NULL; }
-        statfield_2 = PyNumber_Int(statfield_2);
-        if (!statfield_2) { return NULL; }
-
+        if (!statfield_2) {
+            goto catch;
+        }
         PyObject* statfield_3 = PyList_GetItem(status_line_list, 3);
-        if (!statfield_3) { return NULL; }
-        statfield_3 = PyNumber_Int(statfield_3);
-        if (!statfield_3) { return NULL; }
+        if (!statfield_3) {
+            goto catch;
+        }
+
+        statfield_1_new = PyNumber_Int(statfield_1);
+        if (!statfield_1_new) {
+            goto catch;
+        }
+        statfield_2_new = PyNumber_Int(statfield_2);
+        if (!statfield_2_new) {
+            goto catch;
+        }
+        statfield_3_new = PyNumber_Int(statfield_3);
+        if (!statfield_3_new) {
+            goto catch;
+        }
 
         PyObject* status_dict = PyDict_New();
-        if (!status_dict) { return NULL; }
+        if (!status_dict) {
+            goto catch;
+        }
 
-        PyDict_SetItemString(status_dict, "function", statfield_0);
-        PyDict_SetItemString(status_dict, "total", statfield_1);
-        PyDict_SetItemString(status_dict, "running", statfield_2);
-        PyDict_SetItemString(status_dict, "available_workers", statfield_3);
+        // PyDict_SetItem does not steal references, it increase ref count by one
+        PyDict_SetItem(status_dict, key0, statfield_0);
+        PyDict_SetItem(status_dict, key1, statfield_1_new);
+        PyDict_SetItem(status_dict, key2, statfield_2_new);
+        PyDict_SetItem(status_dict, key3, statfield_3_new);
 
-        Py_INCREF(statfield_0);
-        Py_INCREF(statfield_1);
-        Py_INCREF(statfield_2);
-        Py_INCREF(statfield_3);
+        Py_XDECREF(statfield_1_new);
+        Py_XDECREF(statfield_2_new);
+        Py_XDECREF(statfield_3_new);
+
         PyList_Append(status_dict_list, status_dict);
+        Py_XDECREF(status_dict);
     }
+
+catch:
+    // clean up
+    Py_XDECREF(raw_result); 
+    Py_XDECREF(status_string);
+    Py_XDECREF(status_string_trip);
+    Py_XDECREF(status_list);
+    Py_XDECREF(status_dict_list);
+    Py_XDECREF(status_line_list);
+
+    Py_XDECREF(statfield_1_new);
+    Py_XDECREF(statfield_2_new);
+    Py_XDECREF(statfield_3_new);
+
+    Py_XDECREF(key0);
+    Py_XDECREF(key1);
+    Py_XDECREF(key2);
+    Py_XDECREF(key3);
+
     return status_dict_list;
 }
 
