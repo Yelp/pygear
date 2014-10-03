@@ -565,6 +565,7 @@ static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args){
     Py_RETURN_NONE;
 }
 
+// TODO
 #define CLIENT_ADD_TASK(TASKTYPE) \
 static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
     /* Mandatory arguments*/ \
@@ -602,14 +603,16 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
 \
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer)){ \
+    PyObject* method_result = PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer); \
+    if (!method_result) { \
         return NULL; \
     } \
     python_task->g_Task = new_task; \
-    if (_pygear_check_and_raise_exn(ret)){ \
+    if (_pygear_check_and_raise_exn(ret)) { \
         return NULL; \
     } \
-    return Py_BuildValue("O", python_task); \
+    PyObject* result = Py_BuildValue("O", python_task); \
+    return result; \
 }
 
 CLIENT_ADD_TASK()
@@ -645,7 +648,9 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
         return NULL;
     }
     python_task->g_Task = new_task;
-    return Py_BuildValue("O", python_task);
+    PyObject* ret = Py_BuildValue("O", python_task);
+    Py_XDECREF(python_task);
+    return ret;
 }
 
 
@@ -658,19 +663,28 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
     PyGILState_STATE gstate = PyGILState_Ensure(); \
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", client->serializer)){ \
+    PyObject* method_result = PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", client->serializer); \
+    if (!method_result) { \
         PyErr_Print(); \
+        Py_XDECREF(argList); \
+        Py_XDECREF(python_task); \
+        Py_XDECREF(method_result); \
         PyGILState_Release(gstate); \
         return GEARMAN_ERROR; \
     } \
     python_task->g_Task = gear_task; \
     PyObject* callback_return = PyObject_CallFunction(client->cb_##CB, "O", python_task); \
-    if (!callback_return){ \
-        if (PyErr_Occurred()){ \
+    if (!callback_return) { \
+        if (PyErr_Occurred()) { \
             PyErr_Print(); \
         } \
     } \
     /* Release the thread */ \
+    Py_XDECREF(argList); \
+    python_task->g_Task = NULL; \
+    Py_XDECREF(python_task); \
+    Py_XDECREF(method_result); \
+    Py_XDECREF(callback_return); \
     PyGILState_Release(gstate); \
     return GEARMAN_SUCCESS; \
 }
