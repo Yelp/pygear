@@ -32,7 +32,7 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
+PyObject* Task_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     pygear_TaskObject* self;
 
     self = (pygear_TaskObject *)type->tp_alloc(type, 0);
@@ -43,21 +43,20 @@ PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
     return (PyObject *)self;
 }
 
-int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
+int Task_init(pygear_TaskObject* self, PyObject* args, PyObject* kwds) {
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
-    if (self->serializer == NULL){
+    if (self->serializer == NULL) {
         PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
         PyErr_SetObject(PyExc_ImportError, err_string);
         Py_XDECREF(err_string);
         return -1;
     }
     self->g_Task = NULL;
-
     return 0;
 }
 
-void Task_dealloc(pygear_TaskObject* self){
-    if (self->g_Task){
+void Task_dealloc(pygear_TaskObject* self) {
+    if (self->g_Task) {
         gearman_task_free(self->g_Task);
         self->g_Task = NULL;
     }
@@ -69,61 +68,59 @@ void Task_dealloc(pygear_TaskObject* self){
  * Callback handling
  */
 
-static PyObject* pygear_task_function_name(pygear_TaskObject* self){
+static PyObject* pygear_task_function_name(pygear_TaskObject* self) {
     return Py_BuildValue("s", gearman_task_function_name(self->g_Task));
 }
 
-static PyObject* pygear_task_unique(pygear_TaskObject* self){
+static PyObject* pygear_task_unique(pygear_TaskObject* self) {
     return Py_BuildValue("s", gearman_task_unique(self->g_Task));
 }
 
-static PyObject* pygear_task_job_handle(pygear_TaskObject* self){
+static PyObject* pygear_task_job_handle(pygear_TaskObject* self) {
     return Py_BuildValue("s", gearman_task_job_handle(self->g_Task));
 }
 
-static PyObject* pygear_task_is_known(pygear_TaskObject* self){
+static PyObject* pygear_task_is_known(pygear_TaskObject* self) {
     return Py_BuildValue("O",
         (gearman_task_is_known(self->g_Task) ? Py_True : Py_False));
 }
 
-static PyObject* pygear_task_is_running(pygear_TaskObject* self){
+static PyObject* pygear_task_is_running(pygear_TaskObject* self) {
     return Py_BuildValue("O",
         (gearman_task_is_running(self->g_Task) ? Py_True : Py_False));
 }
 
-static PyObject* pygear_task_numerator(pygear_TaskObject* self){
+static PyObject* pygear_task_numerator(pygear_TaskObject* self) {
     return Py_BuildValue("i", gearman_task_numerator(self->g_Task));
 }
 
-static PyObject* pygear_task_denominator(pygear_TaskObject* self){
+static PyObject* pygear_task_denominator(pygear_TaskObject* self) {
     return Py_BuildValue("i", gearman_task_denominator(self->g_Task));
 }
 
-static PyObject* pygear_task_returncode(pygear_TaskObject* self){
+static PyObject* pygear_task_returncode(pygear_TaskObject* self) {
     return Py_BuildValue("i", gearman_task_return(self->g_Task));
 }
 
-static PyObject* pygear_task_strstate(pygear_TaskObject* self){
+static PyObject* pygear_task_strstate(pygear_TaskObject* self) {
     return Py_BuildValue("s", gearman_task_strstate(self->g_Task));
 }
 
-static PyObject* pygear_task_data_size(pygear_TaskObject* self){
+static PyObject* pygear_task_data_size(pygear_TaskObject* self) {
     return Py_BuildValue("I", gearman_task_data_size(self->g_Task));
 }
 
-static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* args){
+static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* args) {
     PyObject* serializer;
 
-    if (!PyArg_ParseTuple(args, "O", &serializer)){
+    if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
-
-    if (!PyObject_HasAttrString(serializer, "loads")){
+    if (!PyObject_HasAttrString(serializer, "loads")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'loads'");
         return NULL;
     }
-
-    if (!PyObject_HasAttrString(serializer, "dumps")){
+    if (!PyObject_HasAttrString(serializer, "dumps")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
@@ -135,24 +132,25 @@ static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* a
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_task_result(pygear_TaskObject* self){
+static PyObject* pygear_task_result(pygear_TaskObject* self) {
     const char* task_result = gearman_task_data(self->g_Task);
     size_t result_size = gearman_task_data_size(self->g_Task);
 
-    if (!task_result){
+    if (!task_result) {
         Py_RETURN_NONE;
     }
 
     PyObject* py_result = Py_BuildValue("s#", task_result, result_size);
-    if (!py_result){
+    if (!py_result) {
         PyErr_SetString(PyExc_SystemError, "Failed to build value from Task result\n");
         return NULL;
     }
     PyObject* unpickled_result = PyObject_CallMethod(self->serializer, "loads", "O", py_result);
     Py_XDECREF(py_result);
-    if (!unpickled_result){
+    if (!unpickled_result) {
         PyErr_SetString(PyExc_SystemError," Failed to unpickle internal Task data\n");
         return NULL;
     }
+
     return unpickled_result;
 }

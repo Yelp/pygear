@@ -34,7 +34,7 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Admin_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
+PyObject* Admin_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     pygear_AdminObject* self;
 
     self = (pygear_AdminObject *)type->tp_alloc(type, 0);
@@ -48,10 +48,10 @@ PyObject* Admin_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
     return (PyObject *)self;
 }
 
-int Admin_init(pygear_AdminObject *self, PyObject *args, PyObject *kwds){
+int Admin_init(pygear_AdminObject* self, PyObject* args, PyObject*kwds) {
     char* host;
     int port;
-    if (!PyArg_ParseTuple(args, "si", &host, &port)){
+    if (!PyArg_ParseTuple(args, "si", &host, &port)) {
         return -1;
     }
 
@@ -63,15 +63,13 @@ int Admin_init(pygear_AdminObject *self, PyObject *args, PyObject *kwds){
     return 0;
 }
 
-void Admin_dealloc(pygear_AdminObject* self){
-    if (self->host != NULL){
+void Admin_dealloc(pygear_AdminObject* self) {
+    if (self->host != NULL) {
         free(self->host);
     }
-
-    if (self->sockfd > 0){
+    if (self->sockfd > 0) {
         close(self->sockfd);
     }
-
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -85,10 +83,10 @@ void Admin_dealloc(pygear_AdminObject* self){
  * If the socket is extant and connected, return a pointer to the PyObject.
  * If there is an error connecting, set an error and return NULL
  */
-static int _pygear_admin_check_connection(pygear_AdminObject* self){
-    if (self->sockfd < 0){
+static int _pygear_admin_check_connection(pygear_AdminObject* self) {
+    if (self->sockfd < 0) {
         self->sockfd = socket(AF_INET, SOCK_STREAM, 0);
-        if (self->sockfd < 0){
+        if (self->sockfd < 0) {
             PyErr_SetString(PyGearExn_ERROR, "Failed to open socket");
             return -1;
         }
@@ -143,9 +141,9 @@ static int _pygear_admin_check_connection(pygear_AdminObject* self){
  * It will be recreated with the new timeout next time _check_connection
  * is called.
  */
-static PyObject* pygear_admin_set_timeout(pygear_AdminObject* self, PyObject* args){
+static PyObject* pygear_admin_set_timeout(pygear_AdminObject* self, PyObject* args) {
     float timeout;
-    if (!PyArg_ParseTuple(args, "f", &timeout)){
+    if (!PyArg_ParseTuple(args, "f", &timeout)) {
         return NULL;
     }
     self->timeout = timeout;
@@ -167,7 +165,7 @@ static int _pygear_extract_response(PyObject* result_string, PyObject** result) 
     PyObject* split_result = NULL;
     PyObject* ok_string = NULL;
 
-    bool success = false;
+    *result = NULL;
 
     stripped_result = PyObject_CallMethod(result_string, "strip", "");
     if (!stripped_result) {
@@ -185,19 +183,17 @@ static int _pygear_extract_response(PyObject* result_string, PyObject** result) 
     int cmp_result = PyObject_RichCompareBool(gearman_status, ok_string, Py_EQ);
     if (cmp_result == 1) {
         *result = PyList_GetSlice(split_result, 1, PyList_Size(split_result)); // new ref
-        success = true;
     }
+
 catch:
-    // clean up
     Py_XDECREF(stripped_result);
     Py_XDECREF(split_result);
     Py_XDECREF(ok_string);
 
-    if (success) {
-        return 1;
+    if (*result == NULL) {
+        return 0;
     }
-    *result = NULL;
-    return 0;
+    return 1;
 }
 
 /*
@@ -231,7 +227,7 @@ static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* pa
 
     if (!PyList_Check(parsed_result)) {
         ret_type = (PyTypeObject *) PyObject_Type(parsed_result);
-        if (!ret_type){
+        if (!ret_type) {
             PyErr_SetString(PyGearExn_ERROR, "An error was encountered while attempting to throw an exception.");
             goto catch;
         }
@@ -241,7 +237,7 @@ static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* pa
         goto catch;
     }
 
-    if (PyList_Size(parsed_result) != 1){
+    if (PyList_Size(parsed_result) != 1) {
         char* result_line = PyString_AsString(raw_result);
         PyObject* err_string = PyString_FromFormat("Unexpected number of values in response (%s)", result_line);
         PyErr_SetObject(PyGearExn_ERROR, err_string);
@@ -302,16 +298,16 @@ int _check_and_raise_server_error(PyObject* response_string) {
     return 0;
 }
 
-static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* args){
+static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* args) {
     char* host;
-    if (!PyArg_ParseTuple(args, "si", &host, &self->port)){
+    if (!PyArg_ParseTuple(args, "si", &host, &self->port)) {
         return NULL;
     }
-    if (self->host){
+    if (self->host) {
         free(self->host);
     }
     self->host = strdup(host);
-    if (self->sockfd){
+    if (self->sockfd) {
         close(self->sockfd);
         self->sockfd = -1;
     }
@@ -333,24 +329,23 @@ static PyObject* pygear_admin_clone(pygear_AdminObject* self) {
     return ret;
 }
 
-static int string_endswith(const char* haystack, const char* needle){
+static int string_endswith(const char* haystack, const char* needle) {
     size_t haystack_len, needle_len;
     haystack_len = strlen(haystack);
     needle_len = strlen(needle);
     if (strncmp(&(haystack[haystack_len - needle_len]), needle, needle_len) == 0) {
         return 1;
-    } else {
-        return 0;
     }
+    return 0;
 }
 
 /* Return value: New reference */
-static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command, char* eom_mark){
-    if (_pygear_admin_check_connection(self) < 0){
+static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command, char* eom_mark) {
+    if (_pygear_admin_check_connection(self) < 0) {
         return NULL;
     }
     size_t bytes_written = write(self->sockfd, command, strlen(command));
-    if (bytes_written < 0){
+    if (bytes_written < 0) {
         return NULL;
     }
 
@@ -364,10 +359,10 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
         errno = 0;
         bytes_read = read(self->sockfd, buf, SOCKET_BUFSIZE);
         int read_err = errno;
-        if (read_err == EAGAIN){
+        if (read_err == EAGAIN) {
             break;
         }
-        if (bytes_read < 0){
+        if (bytes_read < 0) {
             PyObject* err_string = PyString_FromFormat("Failed to read from socket: %s", strerror(read_err));
             PyErr_SetObject(PyGearExn_ERROR, err_string);
             Py_XDECREF(err_string);
@@ -434,7 +429,6 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
     if (!status_dict_list) {
         goto catch;
     }
-
 
     int status_i;
     for (status_i = 0; status_i < PyList_Size(status_list); status_i++) {
@@ -505,7 +499,6 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
     }
 
 catch:
-    // clean up
     Py_XDECREF(raw_result); 
     Py_XDECREF(status_string);
     Py_XDECREF(status_string_trip);
@@ -577,7 +570,6 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
         // worker_line_list should have at least 4 elements -
         // 'FD IP-ADDRESS CLIENT-ID :' and potentially 'FUNCTION ...'
         if (PyList_Size(worker_line_list) < 4) {
-
             PyObject* err_string = PyString_FromFormat("Malformed response line from server: '%s'",
                     PyString_AsString(worker_line));
             PyErr_SetObject(PyGearExn_ERROR, err_string);
@@ -605,6 +597,7 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
         if (!worker_client_id) {
             goto catch;
         }
+
         worker_dict = PyDict_New();
         if (!worker_dict) {
             goto catch;
@@ -623,13 +616,13 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
     }
 
 catch:
-    // clean up
     Py_XDECREF(raw_result);
     Py_XDECREF(worker_string);
     Py_XDECREF(worker_string_trip);
     Py_XDECREF(worker_list);
     Py_XDECREF(worker_dict_list);
     Py_XDECREF(worker_line_list);
+    Py_XDECREF(worker_function_list);
     Py_XDECREF(worker_dict);
     Py_XDECREF(key0);
     Py_XDECREF(key1);
@@ -715,7 +708,7 @@ static PyObject* pygear_admin_shutdown(pygear_AdminObject* self, PyObject* args)
 }
 
 /* Return value: Borrowed reference */
-static PyObject* pygear_admin_verbose(pygear_AdminObject* self){
+static PyObject* pygear_admin_verbose(pygear_AdminObject* self) {
     PyObject* raw_result = NULL;
     PyObject* parsed_result = NULL;
     PyObject* ret = NULL;
@@ -749,7 +742,7 @@ static PyObject* pygear_admin_getpid(pygear_AdminObject* self) {
         _pygear_admin_raise_exception(raw_result);
         goto catch;
     }
-    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)){
+    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)) {
         goto catch;
     }
     success = true;
@@ -764,6 +757,7 @@ catch:
     return NULL;
 }
 
+/* Return value: NULL if fail, Py_RETURN_NONE if success */
 static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* args) {
     char* fn_name;
     int fn_len;
@@ -774,11 +768,15 @@ static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* 
     char* command_buffer = malloc(sizeof(char) * (strlen(format_string) + fn_len));
     sprintf(command_buffer, format_string, fn_name);
     PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
+    if (command_buffer != NULL) {
+        free(command_buffer);
+    }
     if (!_pygear_admin_response_ok(raw_result)){
         _pygear_admin_raise_exception(raw_result);
-        
+        Py_XDECREF(raw_result);
         return NULL;
     }
+    Py_XDECREF(raw_result);
     Py_RETURN_NONE;
 }
 
@@ -805,7 +803,7 @@ static PyObject* pygear_admin_create_function(pygear_AdminObject* self, PyObject
     Py_RETURN_NONE;
 }
 
-
+/* Return value: New reference */
 static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self) {
     PyObject* raw_result = NULL;
     PyObject* status_string = NULL;

@@ -32,7 +32,7 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
+PyObject* Job_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     pygear_JobObject* self;
 
     self = (pygear_JobObject *)type->tp_alloc(type, 0);
@@ -40,10 +40,11 @@ PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
         self->g_Job = NULL;
     }
     self->serializer = NULL;
+
     return (PyObject *)self;
 }
 
-int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds){
+int Job_init(pygear_JobObject* self, PyObject* args, PyObject* kwds) {
     self->g_Job = NULL;
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL) {
@@ -55,8 +56,8 @@ int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds){
     return 0;
 }
 
-void Job_dealloc(pygear_JobObject* self){
-    if (self->g_Job){
+void Job_dealloc(pygear_JobObject* self) {
+    if (self->g_Job) {
         gearman_job_free(self->g_Job);
         self->g_Job = NULL;
     }
@@ -68,19 +69,17 @@ void Job_dealloc(pygear_JobObject* self){
  * Instance Methods
  */
 
-static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* args){
+static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* args) {
     PyObject* serializer;
 
-    if (!PyArg_ParseTuple(args, "O", &serializer)){
+    if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
-
-    if (!PyObject_HasAttrString(serializer, "loads")){
+    if (!PyObject_HasAttrString(serializer, "loads")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'loads'");
         return NULL;
     }
-
-    if (!PyObject_HasAttrString(serializer, "dumps")){
+    if (!PyObject_HasAttrString(serializer, "dumps")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
@@ -93,136 +92,136 @@ static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* arg
 }
 
 
-static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args){
+static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args) {
     PyObject* data;
-    if (!PyArg_ParseTuple(args, "O", &data)){
+    if (!PyArg_ParseTuple(args, "O", &data)) {
         return NULL;
     }
     PyObject* pickled_data = PyObject_CallMethod(self->serializer, "dumps", "O", data);
-    if (!pickled_data){
+    if (!pickled_data) {
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_data data for transport\n");
         return NULL;
     }
     char* c_data; Py_ssize_t c_data_size;
-    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1) {
         Py_XDECREF(pickled_data);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled data to C string");
         return NULL;
     }
     Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_data(self->g_Job, c_data, c_data_size);
-    if (_pygear_check_and_raise_exn(result)){
+    if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args){
+static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args) {
     PyObject* data;
-    if (!PyArg_ParseTuple(args, "O", &data)){
+    if (!PyArg_ParseTuple(args, "O", &data)) {
         return NULL;
     }
     PyObject* pickled_data = PyObject_CallMethod(self->serializer, "dumps", "O", data);
-    if (!pickled_data){
+    if (!pickled_data) {
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_warning data for transport\n");
         return NULL;
     }
     char* c_data; Py_ssize_t c_data_size;
-    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1) {
         Py_XDECREF(pickled_data);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled warning data to C string");
         return NULL;
     }
     Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_warning(self->g_Job, c_data, c_data_size);
-    if (_pygear_check_and_raise_exn(result)){
+    if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args){
+static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args) {
     unsigned numerator, denominator;
-    if (!PyArg_ParseTuple(args, "II", &numerator, &denominator)){
+    if (!PyArg_ParseTuple(args, "II", &numerator, &denominator)) {
         return NULL;
     }
     gearman_return_t result = gearman_job_send_status(self->g_Job, numerator, denominator);
-    if (_pygear_check_and_raise_exn(result)){
+    if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args){
+static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args) {
     PyObject* result;
-    if (!PyArg_ParseTuple(args, "O", &result)){
+    if (!PyArg_ParseTuple(args, "O", &result)) {
         return NULL;
     }
     PyObject* pickled_result = PyObject_CallMethod(self->serializer, "dumps", "O", result);
-    if (!pickled_result){
+    if (!pickled_result) {
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_complete data for transport\n");
         return NULL;
     }
     char* c_result; Py_ssize_t c_result_size;
-    if (PyString_AsStringAndSize(pickled_result, &c_result, &c_result_size) == -1){
+    if (PyString_AsStringAndSize(pickled_result, &c_result, &c_result_size) == -1) {
         Py_XDECREF(pickled_result);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled complete data to C string");
         return NULL;
     }
     Py_XDECREF(pickled_result); 
     gearman_return_t gearman_result = gearman_job_send_complete(self->g_Job, c_result, c_result_size);
-    if (_pygear_check_and_raise_exn(gearman_result)){
+    if (_pygear_check_and_raise_exn(gearman_result)) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* args){
+static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* args) {
     PyObject* data;
-    if (!PyArg_ParseTuple(args, "O", &data)){
+    if (!PyArg_ParseTuple(args, "O", &data)) {
         return NULL;
     }
     PyObject* pickled_data = PyObject_CallMethod(self->serializer, "dumps", "O", data);
-    if (!pickled_data){
+    if (!pickled_data) {
         PyErr_SetString(PyExc_SystemError, "Could not pickle job_exception data for transport\n");
         return NULL;
     }
 
     char* c_data; Py_ssize_t c_data_size;
-    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1){
+    if (PyString_AsStringAndSize(pickled_data, &c_data, &c_data_size) == -1) {
         Py_XDECREF(pickled_data);
         PyErr_SetString(PyExc_SystemError, "Failed to convert pickled exception data to C string");
         return NULL;
     }
     Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_exception(self->g_Job, c_data, c_data_size);
-    if (_pygear_check_and_raise_exn(result)){
+    if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_job_send_fail(pygear_JobObject* self){
+static PyObject* pygear_job_send_fail(pygear_JobObject* self) {
     gearman_return_t result = gearman_job_send_fail(self->g_Job);
-    if (_pygear_check_and_raise_exn(result)){
+    if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_job_handle(pygear_JobObject* self){
+static PyObject* pygear_job_handle(pygear_JobObject* self) {
     return Py_BuildValue("s", gearman_job_handle(self->g_Job));
 }
 
-static PyObject* pygear_job_function_name(pygear_JobObject* self){
+static PyObject* pygear_job_function_name(pygear_JobObject* self) {
     return Py_BuildValue("s", gearman_job_function_name(self->g_Job));
 }
 
-static PyObject* pygear_job_unique(pygear_JobObject* self){
+static PyObject* pygear_job_unique(pygear_JobObject* self) {
     return Py_BuildValue("s", gearman_job_unique(self->g_Job));
 }
 
-static PyObject* pygear_job_workload(pygear_JobObject* self){
+static PyObject* pygear_job_workload(pygear_JobObject* self) {
     const char* job_workload = gearman_job_workload(self->g_Job);
     size_t job_size = gearman_job_workload_size(self->g_Job);
     PyObject* py_result = Py_BuildValue("s#", job_workload, job_size);
@@ -238,10 +237,10 @@ static PyObject* pygear_job_workload(pygear_JobObject* self){
     return py_workload;
 }
 
-static PyObject* pygear_job_workload_size(pygear_JobObject* self){
+static PyObject* pygear_job_workload_size(pygear_JobObject* self) {
     return Py_BuildValue("I", gearman_job_workload_size(self->g_Job));
 }
 
-static PyObject* pygear_job_error(pygear_JobObject* self){
+static PyObject* pygear_job_error(pygear_JobObject* self) {
     return Py_BuildValue("s", gearman_job_error(self->g_Job));
 }
