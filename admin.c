@@ -116,21 +116,19 @@ static int _pygear_admin_check_connection(pygear_AdminObject* self){
         struct timeval tv;
         tv.tv_sec = self->timeout;
         tv.tv_usec = 0;
-        if (setsockopt(self->sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval)) == -1){
-            PyErr_SetObject(
-                PyGearExn_ERROR,
-                PyString_FromFormat("Failed to set timeout: Socket error %s", strerror(errno))
-            );
+        if (setsockopt(self->sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval)) == -1) {
+            PyObject* err_string = PyString_FromFormat("Failed to set timeout: Socket error %s", strerror(errno));
+            PyErr_SetObject(PyGearExn_ERROR, err_string);
+            Py_XDECREF(err_string);
             close(self->sockfd);
             self->sockfd = -1;
             return self->sockfd;
         }
 
-        if (connect(self->sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0){
-            PyErr_SetObject(
-                PyGearExn_ERROR,
-                PyString_FromFormat("Failed to connect: Socket error %s", strerror(errno))
-            );
+        if (connect(self->sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
+            PyObject* err_string = PyString_FromFormat("Failed to connect: Socket error %s", strerror(errno));
+            PyErr_SetObject(PyGearExn_ERROR, err_string);
+            Py_XDECREF(err_string);
             close(self->sockfd);
             self->sockfd = -1;
             return self->sockfd;
@@ -163,34 +161,43 @@ static PyObject* pygear_admin_set_timeout(pygear_AdminObject* self, PyObject* ar
  * the pointer *result
  * On fail, *result is set to NULL
  */
-static int _pygear_extract_response(PyObject* result_string, PyObject** result){
-    PyObject* stripped_result = PyObject_CallMethod(result_string, "strip", "");
-    if (!stripped_result){
-        *result = NULL;
-        return 0;
+static int _pygear_extract_response(PyObject* result_string, PyObject** result) {
+
+    PyObject* stripped_result = NULL;
+    PyObject* split_result = NULL;
+    PyObject* ok_string = NULL;
+
+    bool success = false;
+
+    stripped_result = PyObject_CallMethod(result_string, "strip", "");
+    if (!stripped_result) {
+        goto catch;
     }
-    PyObject* split_result = PyObject_CallMethod(stripped_result, "split", "s", " ");
-    if (!split_result){
-        *result = NULL;
-        return 0;
+    split_result = PyObject_CallMethod(stripped_result, "split", "s", " ");
+    if (!split_result) {
+        goto catch;
     }
-    if (!PyList_Check(split_result)){
-        *result = NULL;
-        return 0;
+    if (!PyList_Check(split_result)) {
+        goto catch;
     }
     PyObject* gearman_status = PyList_GetItem(split_result, 0);
-    PyObject* ok_string = PyString_FromString("OK");
+    ok_string = PyString_FromString("OK");
     int cmp_result = PyObject_RichCompareBool(gearman_status, ok_string, Py_EQ);
-    if (cmp_result == -1){
-        *result = NULL;
-        return 0;
-    } else if (cmp_result == 1){
+    if (cmp_result == 1) {
         *result = PyList_GetSlice(split_result, 1, PyList_Size(split_result));
-        return 1;
-    } else {
-        *result = NULL;
-        return 0;
+        success = true;
     }
+catch:
+    // clean up
+    Py_XDECREF(stripped_result);
+    Py_XDECREF(split_result);
+    Py_XDECREF(ok_string);
+
+    if (success) {
+        return 1;
+    }
+    *result = NULL;
+    return 0;
 }
 
 /*
@@ -213,23 +220,39 @@ static int _pygear_admin_response_ok(PyObject* response_str){
  * If this is not the case, raise an appropriate exception
  * Returns 0 on failure, 1 on success
  */
-static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* parsed_result){
-    if (!PyList_Check(parsed_result)){
-        PyTypeObject* ret_type = (PyTypeObject *) PyObject_Type(parsed_result);
+static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* parsed_result) {
+
+     PyTypeObject* ret_type = NULL;
+
+    bool success = false;
+
+    if (!PyList_Check(parsed_result)) {
+        ret_type = (PyTypeObject *) PyObject_Type(parsed_result);
         if (!ret_type){
             PyErr_SetString(PyGearExn_ERROR, "An error was encountered while attempting to throw an exception.");
-            return 0;
+            goto catch;
         }
-        PyErr_SetObject(PyGearExn_ERROR, PyString_FromFormat("Unexpected internal result: Expected list, got %s", ret_type->tp_name));
-        return 0;
+        PyObject* err_string = PyString_FromFormat("Unexpected internal result: Expected list, got %s", ret_type->tp_name);
+        PyErr_SetObject(PyGearExn_ERROR, err_string);
+        Py_XDECREF(err_string);
+        goto catch;
     }
 
     if (PyList_Size(parsed_result) != 1){
         char* result_line = PyString_AsString(raw_result);
-        PyErr_SetObject(PyGearExn_ERROR, PyString_FromFormat("Unexpected number of values in response (%s)", result_line));
-        return 0;
+        PyObject* err_string = PyString_FromFormat("Unexpected number of values in response (%s)", result_line);
+        PyErr_SetObject(PyGearExn_ERROR, err_string);
+        Py_XDECREF(err_string);
+        goto catch;
     }
-    return 1;
+
+catch:
+    Py_XDECREF(ret_type);
+
+    if (success) {
+        return 1;
+    }
+    return 0;
 }
 
 /*
@@ -249,7 +272,9 @@ void _pygear_admin_raise_exception(PyObject* raw_result){
         raw_result_string = PyString_AsString(raw_result);
     }
     if (raw_result_string != NULL){
-        PyErr_SetObject(PyGearExn_ERROR, PyString_FromFormat("Failed to parse server response (%s)", raw_result_string));
+        PyObject* err_string = PyString_FromFormat("Failed to parse server response (%s)", raw_result_string);
+        PyErr_SetObject(PyGearExn_ERROR, err_string);
+        Py_XDECREF(err_string);
     } else {
         PyErr_SetString(PyGearExn_ERROR, "An error was encountered while attempting to throw an exception.");
     }
@@ -288,13 +313,18 @@ static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* arg
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_admin_clone(pygear_AdminObject* self){
+static PyObject* pygear_admin_clone(pygear_AdminObject* self) {
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_AdminObject* python_admin = (pygear_AdminObject*) PyObject_CallObject((PyObject *) &pygear_AdminType, argList);
+
     python_admin->host = strdup(self->host);
     python_admin->port = self->port;
     python_admin->timeout = self->timeout;
-    return Py_BuildValue("O", python_admin);
+
+    PyObject* ret = Py_BuildValue("O", python_admin);
+    Py_XDECREF(argList);
+    Py_XDECREF(python_admin);
+    return ret;
 }
 
 static int string_endswith(const char* haystack, const char* needle){
@@ -318,6 +348,8 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
         return NULL;
     }
 
+    PyObject* ret = NULL;
+
     char* result = malloc(sizeof(char) * SOCKET_BUFSIZE);
     char buf[SOCKET_BUFSIZE];
     size_t result_bytes = 0;
@@ -326,28 +358,38 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
         errno = 0;
         bytes_read = read(self->sockfd, buf, SOCKET_BUFSIZE);
         int read_err = errno;
-
         if (read_err == EAGAIN){
             break;
         }
-
         if (bytes_read < 0){
-            PyErr_SetObject(PyGearExn_ERROR, PyString_FromFormat("Failed to read from socket: %s", strerror(read_err)));
-            return NULL;
+            PyObject* err_string = PyString_FromFormat("Failed to read from socket: %s", strerror(read_err));
+            PyErr_SetObject(PyGearExn_ERROR, err_string);
+            Py_XDECREF(err_string);
+            goto catch;
         }
 
         result = realloc(result, sizeof(char) * (result_bytes + bytes_read + 1));
         strncpy(&(result[result_bytes]), buf, bytes_read);
         result_bytes += bytes_read;
         result[result_bytes] = '\0';
-        if (string_endswith(result, eom_mark)){
+
+        if (string_endswith(result, eom_mark)) {
             break;
         }
     } while (1);
 
-    return Py_BuildValue("s#", result, result_bytes);
+    ret = Py_BuildValue("s#", result, result_bytes);
+
+catch:
+
+    if (result != NULL) {
+        free(result);
+    }
+    return ret;
 }
 
+
+// TODO
 static PyObject* pygear_admin_status(pygear_AdminObject* self){
     PyObject* raw_result = _pygear_admin_make_call(self, "status\r\n", "\n.\n");
     if (!raw_result) { return NULL; }
