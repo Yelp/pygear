@@ -581,12 +581,14 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
         &function_name, &workload, &unique)){ \
         return NULL; \
     } \
+    PyObject* dumpstr = PyString_FromString("dumps"); \
     PyObject* pickled_input = PyObject_CallMethodObjArgs( \
         self->serializer, \
-        PyString_FromString("dumps"), \
+        dumpstr, \
         workload, \
         NULL \
     ); \
+    Py_XDECREF(dumpstr); \
     if (!pickled_input){ \
         return NULL; \
     } \
@@ -605,10 +607,16 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
     PyObject* method_result = PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer); \
     if (!method_result) { \
+        Py_XDECREF(argList); \
+        Py_XDECREF(python_task); \
+        Py_XDECREF(method_result); \
         return NULL; \
     } \
     python_task->g_Task = new_task; \
     if (_pygear_check_and_raise_exn(ret)) { \
+        Py_XDECREF(argList); \
+        Py_XDECREF(python_task); \
+        Py_XDECREF(method_result); \
         return NULL; \
     } \
     PyObject* result = Py_BuildValue("O", python_task); \
