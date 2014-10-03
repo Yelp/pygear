@@ -95,10 +95,9 @@ static int _pygear_admin_check_connection(pygear_AdminObject* self){
 
         struct hostent* server = gethostbyname(self->host);
         if (server == NULL) {
-            PyErr_SetObject(
-                PyGearExn_ERROR,
-                PyString_FromFormat("Failed to connect: No such host: %s", self->host)
-            );
+            PyObject* err_string = PyString_FromFormat("Failed to connect: No such host: %s", self->host);
+            PyErr_SetObject(PyGearExn_ERROR, err_string);
+            Py_XDECREF(err_string);
             close(self->sockfd);
             self->sockfd = -1;
             return self->sockfd;

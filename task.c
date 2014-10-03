@@ -46,7 +46,9 @@ PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds){
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL){
-        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+        PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
+        PyErr_SetObject(PyExc_ImportError, err_string);
+        Py_XDECREF(err_string);
         return -1;
     }
     self->g_Task = NULL;

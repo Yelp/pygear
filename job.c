@@ -46,8 +46,10 @@ PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds){
     self->g_Job = NULL;
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
-    if (self->serializer == NULL){
-        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+    if (self->serializer == NULL) {
+        PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
+        PyErr_SetObject(PyExc_ImportError, err_string);
+        Py_XDECREF(err_string);
         return -1;
     }
     return 0;

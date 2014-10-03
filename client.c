@@ -47,7 +47,9 @@ int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
     self->g_Client = gearman_client_create(NULL);
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL){
-        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+        PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
+        PyErr_SetObject(PyExc_ImportError, err_string);
+        Py_XDECREF(err_string);
         return -1;
     }
     if (self->g_Client == NULL){

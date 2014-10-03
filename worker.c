@@ -53,7 +53,9 @@ int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds){
     self->g_FunctionMap = PyDict_New();
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL){
-        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+        PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
+        PyErr_SetObject(PyExc_ImportError, err_string);
+        Py_XDECREF(err_string);
         return -1;
     }
     if (self->g_Worker == NULL){
@@ -313,7 +315,6 @@ static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* 
     char* srv_string = NULL;
     // new refs
     PyTypeObject* arg_type = NULL;
-    char* err_string = NULL;
 
     bool success = false;
     if (!PyArg_ParseTuple(args, "O", &server_list)){
@@ -322,9 +323,12 @@ static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* 
     if (!PyList_Check(server_list)){
         arg_type = (PyTypeObject*) PyObject_Type(server_list);
         err_base = "Worker.add_servers expected list, got ";
-        err_string = malloc(sizeof(char) * (strlen(err_base) + strlen(arg_type->tp_name) + 1));
+        char* err_string = malloc(sizeof(char) * (strlen(err_base) + strlen(arg_type->tp_name) + 1));
         sprintf(err_string, "%s%s", err_base, arg_type->tp_name);
         PyErr_SetString(PyExc_TypeError, err_string);
+        if (err_string != NULL) {
+            free(err_string);
+        }
         goto catch;
     }
 
@@ -342,9 +346,6 @@ static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* 
 catch:
     // clean up
     Py_XDECREF(arg_type);
-    if (err_string != NULL) {
-        free(err_string);
-    }
 
     if (success) {
         Py_RETURN_NONE;
@@ -507,13 +508,9 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
         if (!PyErr_Occurred()) {
             // If the callback returned NULL but did not set an exception, set a generic one to be sent back.
-            PyErr_SetObject(
-                PyGearExn_ERROR,
-                PyString_FromFormat(
-                    "Callback method for %s failed, but threw no exception",
-                    job_func_name
-                )
-            );
+            PyObject* err_string = PyString_FromFormat("Callback method for %s failed, but threw no exception", job_func_name);
+            PyErr_SetObject(PyGearExn_ERROR, err_string);
+            Py_XDECREF(err_string);
         }
 
         PyObject *ptype, *pvalue, *ptraceback; // FIXME: missing Py_XDECREF
