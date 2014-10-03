@@ -406,7 +406,6 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
     ); \
     Py_XDECREF(dumpstr); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
-    Py_XDECREF(pickled_input); \
 \
     void* work_result = gearman_client_do##DOTYPE(self->g_Client, \
                                           function_name, \
@@ -455,7 +454,6 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
     ); \
     Py_XDECREF(dumpstr); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
-    Py_XDECREF(pickled_input); \
 \
     gearman_return_t work_result = gearman_client_do##DOTYPE##_background( \
         self->g_Client, \
@@ -565,7 +563,6 @@ static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args){
     Py_RETURN_NONE;
 }
 
-// TODO
 #define CLIENT_ADD_TASK(TASKTYPE) \
 static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
     /* Mandatory arguments*/ \
@@ -620,6 +617,10 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
         return NULL; \
     } \
     PyObject* result = Py_BuildValue("O", python_task); \
+    Py_XDECREF(argList); \
+    python_task->g_Task = NULL; \
+    Py_XDECREF(python_task); \
+    Py_XDECREF(method_result); \
     return result; \
 }
 
