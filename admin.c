@@ -246,6 +246,8 @@ static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* pa
         goto catch;
     }
 
+    success = true;
+
 catch:
     Py_XDECREF(ret_type);
 
