@@ -184,7 +184,7 @@ static int _pygear_extract_response(PyObject* result_string, PyObject** result) 
     ok_string = PyString_FromString("OK");
     int cmp_result = PyObject_RichCompareBool(gearman_status, ok_string, Py_EQ);
     if (cmp_result == 1) {
-        *result = PyList_GetSlice(split_result, 1, PyList_Size(split_result));
+        *result = PyList_GetSlice(split_result, 1, PyList_Size(split_result)); // new ref
         success = true;
     }
 catch:
@@ -202,17 +202,20 @@ catch:
 
 /*
  *  Verifies that the gearman server's response was prepended with "OK".
- *  Returns 0 on failure, nonzero on success.
+ *  Returns 0 on failure, 1 on success.
  */
-static int _pygear_admin_response_ok(PyObject* response_str){
-    if (response_str == NULL || response_str == Py_None){
+static int _pygear_admin_response_ok(PyObject* response_str) {
+    if (response_str == NULL || response_str == Py_None) {
         return 0;
     }
     char* resp = PyString_AsString(response_str);
-    if (resp == NULL){
+    if (resp == NULL) {
         return 0;
     }
-    return !strncmp(resp, "OK", 2);
+    if (strncmp(resp, "OK", 2) == 0) {
+        return 1;
+    }
+    return 0;
 }
 
 /*
@@ -222,7 +225,7 @@ static int _pygear_admin_response_ok(PyObject* response_str){
  */
 static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* parsed_result) {
 
-     PyTypeObject* ret_type = NULL;
+    PyTypeObject* ret_type = NULL;
 
     bool success = false;
 
@@ -261,19 +264,19 @@ catch:
  * Called when _pygear_extract_response fails.
  * Sets the appropriate Python excecption, nothing more.
  */
-void _pygear_admin_raise_exception(PyObject* raw_result){
+void _pygear_admin_raise_exception(PyObject* raw_result) {
     char* raw_result_string;
-    if (raw_result == NULL){
+    if (raw_result == NULL) {
         // There was a socket exception
         PyErr_SetString(PyGearExn_COULD_NOT_CONNECT, "Connection Failed: socket error communicating with the host");
         return;
     }
-    if (raw_result == Py_None){
+    if (raw_result == Py_None) {
         raw_result_string = "no data received";
     } else {
         raw_result_string = PyString_AsString(raw_result);
     }
-    if (raw_result_string != NULL){
+    if (raw_result_string != NULL) {
         PyObject* err_string = PyString_FromFormat("Failed to parse server response (%s)", raw_result_string);
         PyErr_SetObject(PyGearExn_ERROR, err_string);
         Py_XDECREF(err_string);
@@ -284,15 +287,15 @@ void _pygear_admin_raise_exception(PyObject* raw_result){
 
 /*
  * Check if the server responded with ERR ...
- * If so, set an eception and reurn non-zero.
- *
+ * If so, set an exception and reurn 1.
+ * Return 0 if no error.
  */
-int _check_and_raise_server_error(PyObject* response_string){
+int _check_and_raise_server_error(PyObject* response_string) {
     char* resp = PyString_AsString(response_string);
-    if (resp == NULL){
+    if (resp == NULL) {
         return 1;
     }
-    if (!strncmp(resp, "ERR", 3)){
+    if (!strncmp(resp, "ERR", 3)) {
         PyErr_SetString(PyGearExn_ERROR, resp);
         return 1;
     }
@@ -315,6 +318,7 @@ static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* arg
     Py_RETURN_NONE;
 }
 
+/* Return value: New reference */
 static PyObject* pygear_admin_clone(pygear_AdminObject* self) {
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_AdminObject* python_admin = (pygear_AdminObject*) PyObject_CallObject((PyObject *) &pygear_AdminType, argList);
@@ -333,18 +337,18 @@ static int string_endswith(const char* haystack, const char* needle){
     size_t haystack_len, needle_len;
     haystack_len = strlen(haystack);
     needle_len = strlen(needle);
-    if (strncmp(&(haystack[haystack_len - needle_len]), needle, needle_len) == 0){
+    if (strncmp(&(haystack[haystack_len - needle_len]), needle, needle_len) == 0) {
         return 1;
     } else {
         return 0;
     }
 }
 
+/* Return value: New reference */
 static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command, char* eom_mark){
     if (_pygear_admin_check_connection(self) < 0){
         return NULL;
     }
-
     size_t bytes_written = write(self->sockfd, command, strlen(command));
     if (bytes_written < 0){
         return NULL;
@@ -383,16 +387,14 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
     ret = Py_BuildValue("s#", result, result_bytes);
 
 catch:
-
     if (result != NULL) {
         free(result);
     }
     return ret;
 }
 
-
+/* Return value: New reference */
 static PyObject* pygear_admin_status(pygear_AdminObject* self) {
-    // new refs
     PyObject* raw_result = NULL; 
     PyObject* status_string = NULL;
     PyObject* status_string_trip = NULL;
@@ -400,14 +402,14 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
     PyObject* status_dict_list = NULL;
     PyObject* status_line_list = NULL;
 
+    PyObject* key0 = PyString_FromString("function");
+    PyObject* key1 = PyString_FromString("total");
+    PyObject* key2 = PyString_FromString("running");
+    PyObject* key3 = PyString_FromString("available_workers");
+
     PyObject* statfield_1_new = NULL;
     PyObject* statfield_2_new = NULL;
     PyObject* statfield_3_new = NULL;
-
-    PyObject* key0 = NULL;
-    PyObject* key1 = NULL; 
-    PyObject* key2 = NULL;
-    PyObject* key3 = NULL;
 
     raw_result = _pygear_admin_make_call(self, "status\r\n", "\n.\n");
     if (!raw_result) {
@@ -433,10 +435,6 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
         goto catch;
     }
 
-    key0 = PyString_FromString("function");
-    key1 = PyString_FromString("total");
-    key2 = PyString_FromString("running");
-    key3 = PyString_FromString("available_workers");
 
     int status_i;
     for (status_i = 0; status_i < PyList_Size(status_list); status_i++) {
@@ -490,7 +488,7 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
             goto catch;
         }
 
-        // PyDict_SetItem does not steal references, it increase ref count by one
+        // PyDict_SetItem does not steal references
         PyDict_SetItem(status_dict, key0, statfield_0);
         PyDict_SetItem(status_dict, key1, statfield_1_new);
         PyDict_SetItem(status_dict, key2, statfield_2_new);
@@ -501,7 +499,9 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
         Py_XDECREF(statfield_3_new);
 
         PyList_Append(status_dict_list, status_dict);
+
         Py_XDECREF(status_dict);
+        Py_XDECREF(status_line_list);
     }
 
 catch:
@@ -512,169 +512,262 @@ catch:
     Py_XDECREF(status_list);
     Py_XDECREF(status_dict_list);
     Py_XDECREF(status_line_list);
-
+    Py_XDECREF(key0);
+    Py_XDECREF(key1);
+    Py_XDECREF(key2);
+    Py_XDECREF(key3);
     Py_XDECREF(statfield_1_new);
     Py_XDECREF(statfield_2_new);
     Py_XDECREF(statfield_3_new);
 
+    return status_dict_list;
+}
+
+static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
+    PyObject* raw_result = NULL;
+    PyObject* worker_string = NULL;
+    PyObject* worker_string_trip = NULL;
+    PyObject* worker_list = NULL;
+    PyObject* worker_dict_list = NULL;
+    PyObject* worker_line_list = NULL;
+    PyObject* worker_function_list = NULL;
+    PyObject* worker_dict = NULL;
+
+    PyObject* key0 = PyString_FromString("fd");
+    PyObject* key1 = PyString_FromString("ip_address");
+    PyObject* key2 = PyString_FromString("client_id");
+    PyObject* key3 = PyString_FromString("functions");
+
+    raw_result = _pygear_admin_make_call(self, "workers\r\n", "\n.\n");
+    if (!raw_result) {
+        goto catch;
+    }
+    if (_check_and_raise_server_error(raw_result)) {
+        goto catch;
+    }
+    worker_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
+    if (!worker_string) {
+        goto catch;
+    }
+    worker_string_trip = PyObject_CallMethod(worker_string, "strip", "");
+    if (!worker_string_trip) {
+        goto catch;
+    }
+    worker_list = PyObject_CallMethod(worker_string_trip, "split", "s", "\n");
+    if (!worker_list) {
+        goto catch;
+    }
+    worker_dict_list = PyList_New(0);
+    if (!worker_dict_list) {
+        goto catch;
+    }
+
+    int worker_i;
+    for (worker_i = 0; worker_i < PyList_Size(worker_list); worker_i++) {
+
+        PyObject* worker_line = PyList_GetItem(worker_list, worker_i);
+        if (!worker_line) {
+            goto catch;
+        }
+        worker_line_list = PyObject_CallMethod(worker_line, "split", "s", " ");
+        if (!worker_line_list) {
+            goto catch;
+        }
+
+        // worker_line_list should have at least 4 elements -
+        // 'FD IP-ADDRESS CLIENT-ID :' and potentially 'FUNCTION ...'
+        if (PyList_Size(worker_line_list) < 4) {
+
+            PyObject* err_string = PyString_FromFormat("Malformed response line from server: '%s'",
+                    PyString_AsString(worker_line));
+            PyErr_SetObject(PyGearExn_ERROR, err_string);
+            Py_XDECREF(err_string);
+            goto catch;
+        }
+
+        worker_function_list = PyList_New(0);
+        int list_i;
+        for (list_i = 5; list_i < PyList_Size(worker_line_list); list_i++) {
+            PyObject* method_result = NULL;
+            method_result = PyObject_CallMethod(worker_function_list, "append", "O", PyList_GetItem(worker_line_list, list_i));
+            Py_XDECREF(method_result);
+        }
+
+        PyObject* worker_fd = PyList_GetItem(worker_line_list, 0);
+        if (!worker_fd) {
+            goto catch;
+        }
+        PyObject* worker_ip_addr = PyList_GetItem(worker_line_list, 1);
+        if (!worker_ip_addr) {
+            goto catch;
+        }
+        PyObject* worker_client_id = PyList_GetItem(worker_line_list, 2);
+        if (!worker_client_id) {
+            goto catch;
+        }
+        worker_dict = PyDict_New();
+        if (!worker_dict) {
+            goto catch;
+        }
+
+        PyDict_SetItem(worker_dict, key0, worker_fd);
+        PyDict_SetItem(worker_dict, key1, worker_ip_addr);
+        PyDict_SetItem(worker_dict, key2, worker_client_id);
+        PyDict_SetItem(worker_dict, key3, worker_function_list);
+
+        PyList_Append(worker_dict_list, worker_dict);
+
+        Py_XDECREF(worker_dict);
+        Py_XDECREF(worker_line_list);
+        Py_XDECREF(worker_function_list);
+    }
+
+catch:
+    // clean up
+    Py_XDECREF(raw_result);
+    Py_XDECREF(worker_string);
+    Py_XDECREF(worker_string_trip);
+    Py_XDECREF(worker_list);
+    Py_XDECREF(worker_dict_list);
+    Py_XDECREF(worker_line_list);
+    Py_XDECREF(worker_dict);
     Py_XDECREF(key0);
     Py_XDECREF(key1);
     Py_XDECREF(key2);
     Py_XDECREF(key3);
 
-    return status_dict_list;
-}
-
-static PyObject* pygear_admin_workers(pygear_AdminObject* self){
-    PyObject* raw_result = _pygear_admin_make_call(self, "workers\r\n", "\n.\n");
-    if (raw_result == NULL) { return NULL; }
-    if (_check_and_raise_server_error(raw_result)){
-        return NULL;
-    }
-    PyObject* worker_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
-    if (worker_string == NULL) { return NULL; }
-    PyObject* worker_string_trip = PyObject_CallMethod(worker_string, "strip", "");
-    if (worker_string_trip == NULL) { return NULL; }
-    PyObject* worker_list = PyObject_CallMethod(worker_string_trip, "split", "s", "\n");
-
-    PyObject* worker_dict_list = PyList_New(0);
-    if (!worker_dict_list) { return NULL; }
-    int worker_i;
-    for (worker_i = 0; worker_i <  PyList_Size(worker_list); worker_i++){
-        PyObject* worker_line = PyList_GetItem(worker_list, worker_i);
-        if (!worker_line) { return NULL; }
-        PyObject* worker_line_list = PyObject_CallMethod(worker_line, "split", "s", " ");
-        if (!worker_line_list) { return NULL; }
-
-        // worker_line_list should have at least 4 elements -
-        // 'FD IP-ADDRESS CLIENT-ID :' and potentially 'FUNCTION ...'
-        if (PyList_Size(worker_line_list) < 4){
-            PyErr_SetObject(
-                PyGearExn_ERROR,
-                PyString_FromFormat(
-                    "Malformed response line from server: '%s'",
-                    PyString_AsString(worker_line)
-                )
-            );
-            return NULL;
-        }
-
-
-        PyObject* worker_function_list = PyList_New(0);
-        int list_i;
-        for (list_i = 5; list_i < PyList_Size(worker_line_list); list_i++){
-            PyObject_CallMethod(worker_function_list, "append", "O", PyList_GetItem(worker_line_list, list_i));
-        }
-
-        PyObject* worker_fd = PyList_GetItem(worker_line_list, 0);
-        if (!worker_fd) { return NULL; }
-        PyObject* worker_ip_addr = PyList_GetItem(worker_line_list, 1);
-        if (!worker_ip_addr) { return NULL; }
-        PyObject* worker_client_id = PyList_GetItem(worker_line_list, 2);
-        if (!worker_client_id) { return NULL; }
-
-        PyObject* worker_dict = PyDict_New();
-        if (!worker_dict) { return NULL; }
-
-        PyDict_SetItemString(worker_dict, "fd", worker_fd);
-        PyDict_SetItemString(worker_dict, "ip_address", worker_ip_addr);
-        PyDict_SetItemString(worker_dict, "client_id", worker_client_id);
-        PyDict_SetItemString(worker_dict, "functions", worker_function_list);
-
-        Py_INCREF(worker_fd);
-        Py_INCREF(worker_ip_addr);
-        Py_INCREF(worker_client_id);
-        PyList_Append(worker_dict_list, worker_dict);
-    }
     return worker_dict_list;
 }
 
-static PyObject* pygear_admin_version(pygear_AdminObject* self){
+/* Return value: Borrowed reference */
+static PyObject* pygear_admin_version(pygear_AdminObject* self) { 
     PyObject* raw_result = _pygear_admin_make_call(self, "version\r\n", "\n");
-    PyObject* parsed_result;
-    if (!_pygear_extract_response(raw_result, &parsed_result)){
+    PyObject* parsed_result = NULL;
+    PyObject* ret = NULL;
+
+    if (!_pygear_extract_response(raw_result, &parsed_result)) { // parsed_result will be assigned a new ref
         _pygear_admin_raise_exception(raw_result);
-        return NULL;
+        goto catch;
+    }
+    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)) {
+        goto catch;
     }
 
-    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)){
-        return NULL;
-    }
+    ret = PyList_GetItem(parsed_result, 0);
 
-    return PyList_GetItem(parsed_result, 0);
+catch:
+    Py_XDECREF(raw_result);
+    Py_XDECREF(parsed_result);
+    return ret;
 }
 
-static PyObject* pygear_admin_maxqueue(pygear_AdminObject* self, PyObject* args){
-    char* command_buffer;
-    char* queue_name;
+/* Return value: NULL if fail, Py_RETURN_NONE if success */
+static PyObject* pygear_admin_maxqueue(pygear_AdminObject* self, PyObject* args) {
+    char* command_buffer = NULL;
+    char* queue_name = NULL;
     char* format_string = "maxqueue %s %d\r\n";
     int queue_name_len, queue_size;
-    if (!PyArg_ParseTuple(args, "s#i", &queue_name, &queue_name_len, &queue_size)){
-        return NULL;
+    PyObject* raw_result = NULL;
+
+    bool success = false;
+    if (!PyArg_ParseTuple(args, "s#i", &queue_name, &queue_name_len, &queue_size)) {
+        goto catch;
     }
     command_buffer = malloc(sizeof(char) * (queue_name_len + strlen(format_string) + 32));
     sprintf(command_buffer, format_string, queue_name, queue_size);
-    PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
-    free(command_buffer);
-    if (!_pygear_admin_response_ok(raw_result)){
+    raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
+    if (!_pygear_admin_response_ok(raw_result)) {
         _pygear_admin_raise_exception(raw_result);
-        return NULL;
+        goto catch;
     }
-    Py_RETURN_NONE;
+    success = true;
+
+catch:
+    Py_XDECREF(raw_result);
+    if (command_buffer != NULL) {
+        free(command_buffer);
+    }
+    if (success) {        
+        Py_RETURN_NONE;
+    }
+    return NULL;
 }
 
-static PyObject* pygear_admin_shutdown(pygear_AdminObject* self, PyObject* args){
+/* Return value: NULL if fail, Py_RETURN_NONE if success */
+static PyObject* pygear_admin_shutdown(pygear_AdminObject* self, PyObject* args) {
     int graceful;
     if (!PyArg_ParseTuple(args, "i", &graceful)){
         return NULL;
     }
-    PyObject* raw_result;
-    if (graceful){
+    PyObject* raw_result = NULL;
+    if (graceful) {
          raw_result = _pygear_admin_make_call(self, "shutdown\r\n", "\n");
     } else {
          raw_result = _pygear_admin_make_call(self, "shutdown graceful\r\n", "\n");
     }
-    if (!_pygear_admin_response_ok(raw_result)){
+    if (!_pygear_admin_response_ok(raw_result)) {
         _pygear_admin_raise_exception(raw_result);
+        Py_XDECREF(raw_result);
         return NULL;
     }
+    Py_XDECREF(raw_result);
     Py_RETURN_NONE;
 }
 
+/* Return value: Borrowed reference */
 static PyObject* pygear_admin_verbose(pygear_AdminObject* self){
-    PyObject* raw_result = _pygear_admin_make_call(self, "verbose\r\n", "\n");
-    PyObject* parsed_result;
-    if (!_pygear_extract_response(raw_result, &parsed_result)){
+    PyObject* raw_result = NULL;
+    PyObject* parsed_result = NULL;
+    PyObject* ret = NULL;
+
+    raw_result = _pygear_admin_make_call(self, "verbose\r\n", "\n");
+    if (!_pygear_extract_response(raw_result, &parsed_result)) {
         _pygear_admin_raise_exception(raw_result);
+        goto catch;
+    }
+    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)) {
+        goto catch;
     }
 
-    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)){
-        return NULL;
-    }
+    ret = PyList_GetItem(parsed_result, 0);
 
-    return PyList_GetItem(parsed_result, 0);
+catch:
+    Py_XDECREF(raw_result);
+    Py_XDECREF(parsed_result);
+    return ret;
 }
 
-static PyObject* pygear_admin_getpid(pygear_AdminObject* self){
-    PyObject* raw_result = _pygear_admin_make_call(self, "getpid\r\n", "\n");
-    PyObject* parsed_result;
-    if (!_pygear_extract_response(raw_result, &parsed_result)){
+/* Return value: New reference */
+static PyObject* pygear_admin_getpid(pygear_AdminObject* self) {
+    PyObject* raw_result = NULL;
+    PyObject* parsed_result = NULL;
+    PyObject* pid_str = NULL;
+
+    bool success = false;
+    raw_result = _pygear_admin_make_call(self, "getpid\r\n", "\n");
+    if (!_pygear_extract_response(raw_result, &parsed_result)) {
         _pygear_admin_raise_exception(raw_result);
-        return NULL;
+        goto catch;
     }
-
     if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)){
-        return NULL;
+        goto catch;
     }
+    success = true;
+    pid_str = PyList_GetItem(parsed_result, 0);
 
-    PyObject* pid_str = PyList_GetItem(parsed_result, 0);
-    return PyNumber_Int(pid_str);
+catch:
+    Py_XDECREF(raw_result);
+    Py_XDECREF(parsed_result);
+    if (success) {
+        return PyNumber_Int(pid_str);
+    }
+    return NULL;
 }
 
-static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* args){
+static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* args) {
     char* fn_name;
     int fn_len;
-    if (!PyArg_ParseTuple(args, "s#", &fn_name, &fn_len)){
+    if (!PyArg_ParseTuple(args, "s#", &fn_name, &fn_len)) {
         return NULL;
     }
     char* format_string = "drop function  %s\r\n";
@@ -683,118 +776,215 @@ static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* 
     PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
     if (!_pygear_admin_response_ok(raw_result)){
         _pygear_admin_raise_exception(raw_result);
+        
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_admin_create_function(pygear_AdminObject* self, PyObject* args){
+/* Return value: NULL if fail, Py_RETURN_NONE if success */
+static PyObject* pygear_admin_create_function(pygear_AdminObject* self, PyObject* args) {
     char* fn_name;
     int fn_len;
-    if (!PyArg_ParseTuple(args, "s#", &fn_name, &fn_len)){
+    if (!PyArg_ParseTuple(args, "s#", &fn_name, &fn_len)) {
         return NULL;
     }
     char* format_string = "create function  %s\r\n";
     char* command_buffer = malloc(sizeof(char) * (strlen(format_string) + fn_len));
     sprintf(command_buffer, format_string, fn_name);
     PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
-    if (!_pygear_admin_response_ok(raw_result)){
-        _pygear_admin_raise_exception(raw_result);
+    if (command_buffer != NULL) {
+        free(command_buffer);
     }
+    if (!_pygear_admin_response_ok(raw_result)) {
+        _pygear_admin_raise_exception(raw_result);
+        Py_XDECREF(raw_result);
+        return NULL;
+    }
+    Py_XDECREF(raw_result);
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self){
-    PyObject* raw_result = _pygear_admin_make_call(self, "show unique jobs\r\n", "\n.\n");
-    if (!raw_result) { return NULL; }
-    if (_check_and_raise_server_error(raw_result)){
-        return NULL;
+
+static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self) {
+    PyObject* raw_result = NULL;
+    PyObject* status_string = NULL;
+    PyObject* status_string_trip = NULL;
+    PyObject* uuid_list = NULL;
+
+    raw_result = _pygear_admin_make_call(self, "show unique jobs\r\n", "\n.\n");
+    if (!raw_result) {
+        goto catch;
     }
-    PyObject* status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
-    if (!status_string) { return NULL; }
-    PyObject* status_string_trip = PyObject_CallMethod(status_string, "strip", "");
-    if (!status_string_trip) { return NULL; }
-    PyObject* uuid_list = PyObject_CallMethod(status_string_trip, "split", "s", "\n");
+    if (_check_and_raise_server_error(raw_result)) {
+        goto catch;
+    }
+    status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
+    if (!status_string) {
+        goto catch;
+    }
+    status_string_trip = PyObject_CallMethod(status_string, "strip", "");
+    if (!status_string_trip) {
+        goto catch;
+    }
+    uuid_list = PyObject_CallMethod(status_string_trip, "split", "s", "\n");
+
+catch:
+    Py_XDECREF(raw_result);
+    Py_XDECREF(status_string);
+    Py_XDECREF(status_string_trip);
+
     return uuid_list;
 }
 
-//cancel job (handle) -> OK
-static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* args){
+/* Return value: NULL if fail, Py_RETURN_NONE if success */
+static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* args) {
     char* job_handle;
     int job_handle_len;
-    if (!PyArg_ParseTuple(args, "s#", &job_handle, &job_handle_len)){
+    if (!PyArg_ParseTuple(args, "s#", &job_handle, &job_handle_len)) {
         return NULL;
     }
     char* format_string = "cancel job %s\r\n";
     char* buffer = malloc(sizeof(char) * (strlen(format_string) + job_handle_len));
     sprintf(buffer, format_string, job_handle);
     PyObject* raw_result = _pygear_admin_make_call(self, buffer, "\n");
-    free(buffer);
-    if (!_pygear_admin_response_ok(raw_result)){
+    if (buffer != NULL) {
+        free(buffer);
+    }
+    if (!_pygear_admin_response_ok(raw_result)) {
         _pygear_admin_raise_exception(raw_result);
+        Py_XDECREF(raw_result);
         return NULL;
     }
+    Py_XDECREF(raw_result);
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self){
-    PyObject* raw_result = _pygear_admin_make_call(self, "show jobs\r\n", "\n.\n");
-    if (!raw_result) { return NULL; }
-    if (_check_and_raise_server_error(raw_result)){
-        return NULL;
+/* Return value: New reference */
+static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
+    PyObject* raw_result = NULL;
+    PyObject* status_string = NULL;
+    PyObject* status_string_trip = NULL;
+    PyObject* status_list = NULL;
+    PyObject* status_dict_list = NULL;
+    PyObject* status_dict = NULL;
+    PyObject* status_line_list = NULL;
+
+    PyObject* key0 = PyString_FromString("handle");
+    PyObject* key1 = PyString_FromString("retries");
+    PyObject* key2 = PyString_FromString("ignore_job");
+    PyObject* key3 = PyString_FromString("job_queued");
+
+    PyObject* statfield_1_new = NULL;
+    PyObject* statfield_2_new = NULL;
+    PyObject* statfield_3_new = NULL;
+
+    raw_result = _pygear_admin_make_call(self, "show jobs\r\n", "\n.\n");
+    if (!raw_result) {
+        goto catch;
     }
-    PyObject* status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
-    if (!status_string) { return NULL; }
-    PyObject* status_string_trip = PyObject_CallMethod(status_string, "strip", "");
-    if (!status_string_trip) { return NULL; }
-    PyObject* status_list = PyObject_CallMethod(status_string_trip, "split", "s", "\n");
-    if (!status_list) { return NULL; }
-    PyObject* status_dict_list = PyList_New(0);
-    if (!status_dict_list) { return NULL; }
+    if (_check_and_raise_server_error(raw_result)) {
+        goto catch;
+    }
+    status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
+    if (!status_string) {
+        goto catch;
+    }
+    status_string_trip = PyObject_CallMethod(status_string, "strip", "");
+    if (!status_string_trip) {
+        goto catch;
+    }
+    status_list = PyObject_CallMethod(status_string_trip, "split", "s", "\n");
+    if (!status_list) {
+        goto catch;
+    }
+    status_dict_list = PyList_New(0);
+    if (!status_dict_list) {
+        goto catch;
+    }
+
     int status_i;
-    for (status_i=0; status_i <  PyList_Size(status_list); status_i++){
+    for (status_i = 0; status_i < PyList_Size(status_list); status_i++) {
+
         PyObject* status_line = PyList_GetItem(status_list, status_i);
-        if (!status_line) { return NULL; }
-        PyObject* status_line_list = PyObject_CallMethod(status_line, "split", "s", "\t");
-        if (!status_line_list) { return NULL; }
+        if (!status_line) {
+            goto catch;
+        }
+        status_line_list = PyObject_CallMethod(status_line, "split", "s", "\t");
+        if (!status_line_list) {
+            goto catch;
+        }
 
         // If the server status is empty, we will get a line with only one entry.
         // It should be skipped.
-        if (PyList_Size(status_line_list) < 4){
+        if (PyList_Size(status_line_list) < 4) {
             continue;
         }
 
         PyObject* statfield_0 = PyList_GetItem(status_line_list, 0);
-        if (!statfield_0) { return NULL; }
-
+        if (!statfield_0) {
+            goto catch;
+        }
         PyObject* statfield_1 = PyList_GetItem(status_line_list, 1);
-        if (!statfield_1) { return NULL; }
-        statfield_1 = PyNumber_Int(statfield_1);
-        if (!statfield_1) { return NULL; }
-
+        if (!statfield_1) {
+            goto catch;
+        }
         PyObject* statfield_2 = PyList_GetItem(status_line_list, 2);
-        if (!statfield_2) { return NULL; }
-        statfield_2 = PyNumber_Int(statfield_2);
-        if (!statfield_2) { return NULL; }
-
+        if (!statfield_2) {
+            goto catch;
+        }
         PyObject* statfield_3 = PyList_GetItem(status_line_list, 3);
-        if (!statfield_3) { return NULL; }
-        statfield_3 = PyNumber_Int(statfield_3);
-        if (!statfield_3) { return NULL; }
+        if (!statfield_3) {
+            goto catch;
+        }
 
-        PyObject* status_dict = PyDict_New();
-        if (!status_dict) { return NULL; }
+        statfield_1_new = PyNumber_Int(statfield_1);
+        if (!statfield_1) {
+            goto catch;
+        }
+        statfield_2_new = PyNumber_Int(statfield_2);
+        if (!statfield_2) {
+            goto catch;
+        }
+        statfield_3_new = PyNumber_Int(statfield_3);
+        if (!statfield_3) {
+            goto catch;
+        }
+        status_dict = PyDict_New();
+        if (!status_dict) {
+            goto catch;
+        }
 
-        PyDict_SetItemString(status_dict, "handle", statfield_0);
-        PyDict_SetItemString(status_dict, "retries", statfield_1);
-        PyDict_SetItemString(status_dict, "ignore_job", statfield_2);
-        PyDict_SetItemString(status_dict, "job_queued", statfield_3);
+        PyDict_SetItem(status_dict, key0, statfield_0);
+        PyDict_SetItem(status_dict, key1, statfield_1_new);
+        PyDict_SetItem(status_dict, key2, statfield_2_new);
+        PyDict_SetItem(status_dict, key3, statfield_3_new);
 
-        Py_INCREF(statfield_0);
-        Py_INCREF(statfield_1);
-        Py_INCREF(statfield_2);
-        Py_INCREF(statfield_3);
+        Py_XDECREF(statfield_1_new);
+        Py_XDECREF(statfield_2_new);
+        Py_XDECREF(statfield_3_new);
+
         PyList_Append(status_dict_list, status_dict);
+
+        Py_XDECREF(status_dict);
+        Py_XDECREF(status_line_list);
     }
+
+catch:
+    Py_XDECREF(raw_result);
+    Py_XDECREF(status_string);
+    Py_XDECREF(status_string_trip);
+    Py_XDECREF(status_list);
+    Py_XDECREF(status_dict_list);
+    Py_XDECREF(status_dict);
+    Py_XDECREF(status_line_list);
+    Py_XDECREF(key0);
+    Py_XDECREF(key1);
+    Py_XDECREF(key2);
+    Py_XDECREF(key3);
+    Py_XDECREF(statfield_1_new);
+    Py_XDECREF(statfield_2_new);
+    Py_XDECREF(statfield_3_new);
+
     return status_dict_list;
 }
