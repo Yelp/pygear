@@ -94,12 +94,10 @@ static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObjec
     if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
-
     if (!PyObject_HasAttrString(serializer, "loads")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'loads'");
         return NULL;
     }
-
     if (!PyObject_HasAttrString(serializer, "dumps")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
@@ -249,8 +247,6 @@ static PyObject* pygear_worker_get_options(pygear_WorkerObject* self) {
         PYGEAR_WORKER_MAX, worker_options[9],
         PYGEAR_WORKER_MAX, worker_options[10]
     );
-
-    Py_XDECREF(worker_options);
     return option_dictionary;
 }
 
@@ -273,6 +269,7 @@ static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t ve
     PyGILState_STATE gstate = PyGILState_Ensure();
 
     PyObject* python_cb_method = (PyObject*) context; // borrowed ref
+
     PyObject* python_line = PyString_FromString(line);
     PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_line);
     
@@ -302,7 +299,7 @@ static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* a
 }
 
 /* Return NULL if fail, Py_RETURN_NONE if success */
-static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* args){
+static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* args) {
     char* host;
     int port;
     if (!PyArg_ParseTuple(args, "zi", &host, &port)) {
@@ -454,7 +451,6 @@ static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObje
         return NULL;
     }
     int func_exist = gearman_worker_function_exist(self->g_Worker, function_name, function_length);
-
     return (func_exist ? Py_True : Py_False);
 }
 
@@ -466,7 +462,9 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     // borrowed refs
     pygear_WorkerObject* worker = ((pygear_WorkerObject*) context);
     const char* job_func_name = gearman_job_function_name(gear_job);
-    PyObject* python_cb_method = PyDict_GetItemString(worker->g_FunctionMap, job_func_name);
+    PyObject* job_func_name_str = PyString_FromString(job_func_name);
+    PyObject* python_cb_method = PyDict_GetItem(worker->g_FunctionMap, job_func_name_str);
+    Py_XDECREF(job_func_name_str);
 
     // new refs
     PyObject* argList = NULL;
@@ -510,7 +508,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             Py_XDECREF(err_string);
         }
 
-        PyObject *ptype, *pvalue, *ptraceback; // FIXME: missing Py_XDECREF
+        PyObject *ptype, *pvalue, *ptraceback;
         PyErr_Fetch(&ptype, &pvalue, &ptraceback);
         Py_XINCREF(ptype);
         Py_XINCREF(pvalue);
@@ -589,12 +587,14 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
 
     } else {
         // Try to pickle the return from the function
+        PyObject* dumpstr = PyString_FromString("dumps");
         pickled_result = PyObject_CallMethodObjArgs (
             worker->serializer,
-            PyString_FromString("dumps"),
+            dumpstr,
             callback_return,
             NULL
         );
+        Py_XDECREF(dumpstr);
         if (!pickled_result) {
             if (!PyErr_Occurred()) {
                 PyErr_SetString(PyExc_SystemError, "Failed to serialize worker result data\n");
@@ -633,7 +633,7 @@ catch:
     } else if (retptr == FAIL) {
         *ret_ptr = GEARMAN_FAIL;
     } else { 
-        // ret_ptr remain unchanged as input
+        // ret_ptr remain unchanged, same as input
     }
     return NULL;
 }
@@ -669,7 +669,7 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
 }
 
 static PyObject* pygear_worker_work(pygear_WorkerObject* self) {
-    gearman_return_t result  = gearman_worker_work(self->g_Worker);
+    gearman_return_t result = gearman_worker_work(self->g_Worker);
     if (PyErr_Occurred()) {
         return NULL;
     }

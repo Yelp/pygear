@@ -154,8 +154,9 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
     );
 
     if (new_task == NULL) {
-        _pygear_check_and_raise_exn(gearman_client_errno(self->g_Client));
-        return NULL;
+        if (_pygear_check_and_raise_exn(gearman_client_errno(self->g_Client))) {
+            return NULL;
+        }
     }
 
     PyObject* argList = Py_BuildValue("(O, O)", Py_None, Py_None);
