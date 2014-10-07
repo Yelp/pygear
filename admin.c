@@ -333,6 +333,9 @@ static int string_endswith(const char* haystack, const char* needle) {
     size_t haystack_len, needle_len;
     haystack_len = strlen(haystack);
     needle_len = strlen(needle);
+    if (haystack_len < needle_len) {
+        return 0;
+    }
     if (strncmp(&(haystack[haystack_len - needle_len]), needle, needle_len) == 0) {
         return 1;
     }
