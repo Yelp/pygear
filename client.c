@@ -32,7 +32,7 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Client_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
+PyObject* Client_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     pygear_ClientObject* self;
 
     self = (pygear_ClientObject *)type->tp_alloc(type, 0);
@@ -43,14 +43,16 @@ PyObject* Client_new(PyTypeObject *type, PyObject *args, PyObject *kwds){
     return (PyObject *)self;
 }
 
-int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
+int Client_init(pygear_ClientObject* self, PyObject* args, PyObject*kwds) {
     self->g_Client = gearman_client_create(NULL);
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
-    if (self->serializer == NULL){
-        PyErr_SetObject(PyExc_ImportError, PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER));
+    if (self->serializer == NULL) {
+        PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
+        PyErr_SetObject(PyExc_ImportError, err_string);
+        Py_XDECREF(err_string);
         return -1;
     }
-    if (self->g_Client == NULL){
+    if (self->g_Client == NULL) {
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman client structure");
         return -1;
     }
@@ -68,8 +70,8 @@ int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds){
     return 0;
 }
 
-void Client_dealloc(pygear_ClientObject* self){
-    if (self->g_Client){
+void Client_dealloc(pygear_ClientObject* self) {
+    if (self->g_Client) {
         gearman_client_free(self->g_Client);
         self->g_Client = NULL;
     }
@@ -83,6 +85,7 @@ void Client_dealloc(pygear_ClientObject* self){
     Py_XDECREF(self->cb_complete);
     Py_XDECREF(self->cb_exception);
     Py_XDECREF(self->cb_fail);
+    Py_XDECREF(self->cb_log);
 
     Py_XDECREF(self->serializer);
 
@@ -94,19 +97,17 @@ void Client_dealloc(pygear_ClientObject* self){
  ********************
  */
 
-static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObject* args){
+static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObject* args) {
     PyObject* serializer;
 
-    if (!PyArg_ParseTuple(args, "O", &serializer)){
+    if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
-
-    if (!PyObject_HasAttrString(serializer, "loads")){
+    if (!PyObject_HasAttrString(serializer, "loads")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'loads'");
         return NULL;
     }
-
-    if (!PyObject_HasAttrString(serializer, "dumps")){
+    if (!PyObject_HasAttrString(serializer, "dumps")) {
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
@@ -118,7 +119,11 @@ static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObjec
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
+/* Return value: New reference */
+static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) {
+
+    PyObject* ret = NULL;
+
     // Mandatory arguments
     char* function_name;
     char* workload;
@@ -131,7 +136,7 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
     static char* kwlist[] = {"function", "workload", "unique", "name", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ss#|ss", kwlist,
-        &function_name, &workload, &workload_size, &unique, &name)){
+        &function_name, &workload, &workload_size, &unique, &name)) {
         return NULL;
     }
     gearman_argument_t arguments = gearman_argument_make(
@@ -148,45 +153,61 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
         NULL
     );
 
-    if (new_task == NULL){
-        _pygear_check_and_raise_exn(gearman_client_errno(self->g_Client));
-        return NULL;
+    if (new_task == NULL) {
+        if (_pygear_check_and_raise_exn(gearman_client_errno(self->g_Client))) {
+            return NULL;
+        }
     }
 
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    PyObject* argList = Py_BuildValue("(O, O)", Py_None, Py_None);
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList);
     python_task->g_Task = new_task;
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer)){
-        return NULL;
+    PyObject* method_result = PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer);
+
+    if (!method_result) {
+        goto catch;
+    }
+    if (_pygear_check_and_raise_exn(gearman_task_return(new_task))) {
+        goto catch;
     }
 
-    if (_pygear_check_and_raise_exn(gearman_task_return(new_task))){
-        return NULL;
-    }
-
-    gearman_result_st *result= gearman_task_result(new_task);
+    gearman_result_st *result = gearman_task_result(new_task);
     int result_size = gearman_result_size(result);
     const char* result_data = gearman_result_value(result);
-    return Py_BuildValue("s#", result_data, result_size);
+    ret = Py_BuildValue("s#", result_data, result_size);
+
+catch:
+    Py_XDECREF(argList);
+    Py_XDECREF(python_task);
+    Py_XDECREF(method_result);
+
+    return ret;
 }
 
-static PyObject* pygear_client_clone(pygear_ClientObject* self){
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
-    pygear_ClientObject* python_client = (pygear_ClientObject*) PyObject_CallObject((PyObject *) &pygear_ClientType, argList);
+static PyObject* pygear_client_clone(pygear_ClientObject* self) {
+    PyObject* argList = NULL;
+    pygear_ClientObject* python_client = NULL;
+    PyObject* ret = NULL;
+
+    argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    python_client = (pygear_ClientObject*) PyObject_CallObject((PyObject *) &pygear_ClientType, argList);
     python_client->g_Client = gearman_client_clone(NULL, self->g_Client);
-    return Py_BuildValue("O", python_client);
+    ret = Py_BuildValue("O", python_client);
+
+    Py_XDECREF(argList);
+    Py_XDECREF(python_client);
+    return ret;
 }
 
-static PyObject* pygear_client_error(pygear_ClientObject* self){
+static PyObject* pygear_client_error(pygear_ClientObject* self) {
     return Py_BuildValue("s", gearman_client_error(self->g_Client));
 }
 
-static PyObject* pygear_client_error_code(pygear_ClientObject* self){
+static PyObject* pygear_client_error_code(pygear_ClientObject* self) {
     return Py_BuildValue("i", gearman_client_error_code(self->g_Client));
 }
 
-
-static PyObject* pygear_client_errno(pygear_ClientObject* self){
+static PyObject* pygear_client_errno(pygear_ClientObject* self) {
     return Py_BuildValue("i", gearman_client_errno(self->g_Client));
 }
 
@@ -195,7 +216,8 @@ static PyObject* pygear_client_errno(pygear_ClientObject* self){
 #define CLIENT_OPT_FREE_TASKS "free_tasks"
 #define CLIENT_OPT_GENERATE_UNIQUE "generate_unique"
 
-static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){
+/* Return NULL if fail, Py_RETURN_NONE if success */
+static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) {
     static char *kwlist[] = {
         CLIENT_OPT_NON_BLOCKING,
         CLIENT_OPT_UNBUFFERED_RESULT,
@@ -211,20 +233,21 @@ static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* 
         GEARMAN_CLIENT_GENERATE_UNIQUE
     };
 
-    int client_options[4];
+    int num_options = 4;
+    int client_options[num_options];
 
     if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|iiii", kwlist,
                                       &client_options[0],
                                       &client_options[1],
                                       &client_options[2],
                                       &client_options[3]
-                                      )){
+                                      )) {
         return NULL;
     }
 
     int i;
-    for (i=0; i < 4; i++){
-        if (client_options[i]){
+    for (i = 0; i < num_options; ++i) {
+        if (client_options[i]) {
             gearman_client_add_options(self->g_Client, options_t_value[i]);
         } else {
             gearman_client_remove_options(self->g_Client, options_t_value[i]);
@@ -234,7 +257,8 @@ static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_client_get_options(pygear_ClientObject* self){
+/* Return value: New reference */
+static PyObject* pygear_client_get_options(pygear_ClientObject* self) {
     static int options_t_value[] = {
         GEARMAN_CLIENT_NON_BLOCKING,
         GEARMAN_CLIENT_UNBUFFERED_RESULT,
@@ -242,7 +266,8 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self){
         GEARMAN_CLIENT_GENERATE_UNIQUE
     };
 
-    PyObject* client_options[4];
+    int num_options = 4;
+    PyObject* client_options[num_options];
     int i;
     for (i=0; i < 4; i++){
         client_options[i] = (gearman_client_has_option(self->g_Client, options_t_value[i]) ? Py_True : Py_False);
@@ -254,14 +279,15 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self){
         CLIENT_OPT_FREE_TASKS, client_options[2],
         CLIENT_OPT_GENERATE_UNIQUE, client_options[3]
     );
+
     return option_dictionary;
 }
 
-static PyObject* pygear_client_timeout(pygear_ClientObject* self){
+static PyObject* pygear_client_timeout(pygear_ClientObject* self) {
     return Py_BuildValue("i", gearman_client_timeout(self->g_Client));
 }
 
-static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* args){
+static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* args) {
     int timeout;
     if (!PyArg_ParseTuple(args, "i", &timeout)){
         return NULL;
@@ -270,87 +296,92 @@ static PyObject* pygear_client_set_timeout(pygear_ClientObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
-static void _pygear_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context){
+static void _pygear_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context) {
     pygear_ClientObject* client = (pygear_ClientObject*) context;
     PyGILState_STATE gstate = PyGILState_Ensure();
-    PyObject_CallFunction(client->cb_log, "s", line);
+    PyObject* result = PyObject_CallFunction(client->cb_log, "s", line);
+    Py_XDECREF(result);
     PyGILState_Release(gstate);
 }
 
-static PyObject* pygear_client_set_log_fn(pygear_ClientObject* self, PyObject* args){
+static PyObject* pygear_client_set_log_fn(pygear_ClientObject* self, PyObject* args) {
     PyObject* callback_fn;
     gearman_verbose_t verbose;
-    if (!PyArg_ParseTuple(args, "Oi", &callback_fn, &verbose)){
+    if (!PyArg_ParseTuple(args, "Oi", &callback_fn, &verbose)) {
         return NULL;
     }
 
+    Py_INCREF(callback_fn);
     Py_XDECREF(self->cb_log);
     self->cb_log = callback_fn;
-    Py_INCREF(self->cb_log);
 
     gearman_client_set_log_fn(self->g_Client, _pygear_log_fn_wrapper, self, verbose);
 
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* args){
+static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* args) {
     char* host;
     int port;
-    if (!PyArg_ParseTuple(args, "zi", &host, &port)){
+    if (!PyArg_ParseTuple(args, "zi", &host, &port)) {
         return NULL;
     }
     gearman_return_t result = gearman_client_add_server(self->g_Client, host, port);
-    if (_pygear_check_and_raise_exn(result)){
+    if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
-    const char *EXCEPTIONS="exceptions";
+    const char *EXCEPTIONS = "exceptions";
     gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args){
+static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args) {
     PyObject* server_list;
-    if (!PyArg_ParseTuple(args, "O", &server_list)){
+    if (!PyArg_ParseTuple(args, "O", &server_list)) {
         return NULL;
     }
-    if (!PyList_Check(server_list)){
+    if (!PyList_Check(server_list)) {
         PyTypeObject* arg_type = (PyTypeObject*) PyObject_Type(server_list);
         char* err_base = "Client.add_servers expected list, got ";
         char* err_string = malloc(sizeof(char) * (strlen(err_base) + strlen(arg_type->tp_name) + 1));
         sprintf(err_string, "%s%s", err_base, arg_type->tp_name);
         PyErr_SetString(PyExc_TypeError, err_string);
+        if (err_string != NULL) {
+            free(err_string);
+        }
+        Py_XDECREF(arg_type);
         return NULL;
     }
 
     Py_ssize_t num_servers = PyList_Size(server_list);
     Py_ssize_t i;
-    for (i=0; i < num_servers; i++){
+    for (i = 0; i < num_servers; ++i) {
         char* srv_string = PyString_AsString(PyList_GetItem(server_list, i));
         gearman_return_t result = gearman_client_add_servers(self->g_Client, srv_string);
-
-        if (_pygear_check_and_raise_exn(result)){
+        if (_pygear_check_and_raise_exn(result)) {
             return NULL;
         }
     }
     const char *EXCEPTIONS="exceptions";
     gearman_client_set_server_option(self->g_Client, EXCEPTIONS, strlen(EXCEPTIONS));
+
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_client_remove_servers(pygear_ClientObject* self){
+static PyObject* pygear_client_remove_servers(pygear_ClientObject* self) {
     gearman_client_remove_servers(self->g_Client);
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_client_wait(pygear_ClientObject* self){
-    if (_pygear_check_and_raise_exn(gearman_client_wait(self->g_Client))){
+static PyObject* pygear_client_wait(pygear_ClientObject* self) {
+    if (_pygear_check_and_raise_exn(gearman_client_wait(self->g_Client))) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
 #define CLIENT_DO(DOTYPE) \
-static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
+static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) { \
     /* Mandatory arguments*/ \
     char* function_name; \
     PyObject* workload; \
@@ -362,19 +393,22 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
     static char* kwlist[] = {"function", "workload", "unique", NULL}; \
 \
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|s", kwlist, \
-        &function_name, &workload, &unique)){ \
+        &function_name, &workload, &unique)) { \
         return NULL; \
     } \
 \
     size_t result_size; \
     gearman_return_t ret_ptr; \
+    PyObject* dumpstr = PyString_FromString("dumps"); \
     PyObject* pickled_input = PyObject_CallMethodObjArgs( \
         self->serializer, \
-        PyString_FromString("dumps"), \
+        dumpstr, \
         workload, \
         NULL \
     ); \
+    Py_XDECREF(dumpstr); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
+    Py_XDECREF(pickled_input); \
 \
     void* work_result = gearman_client_do##DOTYPE(self->g_Client, \
                                           function_name, \
@@ -382,18 +416,22 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
                                           workload_string, workload_size, \
                                           &result_size, \
                                           &ret_ptr); \
-    if (_pygear_check_and_raise_exn(ret_ptr)){ \
+    if (_pygear_check_and_raise_exn(ret_ptr)) { \
         return NULL; \
     } \
+\
     PyObject* py_result = Py_BuildValue("s#", work_result, result_size); \
-    if (py_result == Py_None){ \
+    if (py_result == Py_None) { \
+        Py_XDECREF(py_result); \
         Py_RETURN_NONE; \
     } \
-    return PyObject_CallMethod(self->serializer, "loads", "O", py_result); \
+    PyObject* ret = PyObject_CallMethod(self->serializer, "loads", "O", py_result); \
+    Py_XDECREF(py_result); \
+    return ret; \
 }
 
 #define CLIENT_DO_BACKGROUND(DOTYPE) \
-static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
+static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) { \
     /* Mandatory arguments*/ \
     char* function_name; \
     PyObject* workload; \
@@ -410,13 +448,16 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
     } \
 \
     char* job_handle = malloc(sizeof(char) * GEARMAN_JOB_HANDLE_SIZE); \
+    PyObject* dumpstr = PyString_FromString("dumps"); \
     PyObject* pickled_input = PyObject_CallMethodObjArgs( \
         self->serializer, \
-        PyString_FromString("dumps"), \
+        dumpstr, \
         workload, \
         NULL \
     ); \
+    Py_XDECREF(dumpstr); \
     PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
+    Py_XDECREF(pickled_input); \
 \
     gearman_return_t work_result = gearman_client_do##DOTYPE##_background( \
         self->g_Client, \
@@ -424,7 +465,11 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
         unique, \
         workload_string, workload_size, \
         job_handle); \
-    if (_pygear_check_and_raise_exn(work_result)){ \
+\
+    if (job_handle != NULL) { \
+        free(job_handle); \
+    } \
+    if (_pygear_check_and_raise_exn(work_result)) { \
         return NULL; \
     } \
     Py_RETURN_NONE; \
@@ -438,18 +483,19 @@ CLIENT_DO_BACKGROUND()
 CLIENT_DO_BACKGROUND(_high)
 CLIENT_DO_BACKGROUND(_low)
 
-static PyObject* pygear_client_do_job_handle(pygear_ClientObject* self){
+static PyObject* pygear_client_do_job_handle(pygear_ClientObject* self) {
     return Py_BuildValue("s", gearman_client_do_job_handle(self->g_Client));
 }
 
 // Deprecatd
-static PyObject* pygear_client_do_status(pygear_ClientObject* self){
+static PyObject* pygear_client_do_status(pygear_ClientObject* self) {
     unsigned numerator, denominator;
     gearman_client_do_status(self->g_Client, &numerator, &denominator);
     return Py_BuildValue("(I,I)", numerator, denominator);
 }
 
-static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args){
+/* Return value: New reference */
+static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args) {
     gearman_job_handle_t job_handle;
     bool is_known, is_running;
     unsigned numerator, denominator;
@@ -477,21 +523,21 @@ static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* a
         "numerator", numerator,
         "denominator", denominator
     );
-
     return status_dict;
 }
 
-static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject* args){
+/* Return value: New reference */
+static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject* args) {
     char* unique;
     unsigned unique_len;
 
-    if (!PyArg_ParseTuple(args, "s#", &unique, &unique_len)){
+    if (!PyArg_ParseTuple(args, "s#", &unique, &unique_len)) {
         return NULL;
     }
 
     gearman_status_t status = gearman_client_unique_status(self->g_Client, unique, unique_len);
 
-    if (_pygear_check_and_raise_exn(status.status_.mesg_.result_rc)){
+    if (_pygear_check_and_raise_exn(status.status_.mesg_.result_rc)) {
         return NULL;
     }
 
@@ -502,15 +548,13 @@ static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject
         "numerator", status.status_.mesg_.numerator,
         "denominator", status.status_.mesg_.denominator
     );
-
     return status_dict;
 }
 
-static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args){
+static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args) {
     char* workload;
     unsigned workload_len;
-
-    if (!PyArg_ParseTuple(args, "s#", &workload, &workload_len)){
+    if (!PyArg_ParseTuple(args, "s#", &workload, &workload_len)) {
         return NULL;
     }
     gearman_return_t result = gearman_client_echo(self->g_Client, workload, workload_len);
@@ -518,12 +562,11 @@ static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args){
     if (_pygear_check_and_raise_exn(result)){
         return NULL;
     }
-
     Py_RETURN_NONE;
 }
 
 #define CLIENT_ADD_TASK(TASKTYPE) \
-static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs){ \
+static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) { \
     /* Mandatory arguments*/ \
     char* function_name; \
     PyObject* workload; \
@@ -534,16 +577,18 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
     static char* kwlist[] = {"function", "workload", "unique", NULL}; \
 \
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|s", kwlist, \
-        &function_name, &workload, &unique)){ \
+        &function_name, &workload, &unique)) { \
         return NULL; \
     } \
+    PyObject* dumpstr = PyString_FromString("dumps"); \
     PyObject* pickled_input = PyObject_CallMethodObjArgs( \
         self->serializer, \
-        PyString_FromString("dumps"), \
+        dumpstr, \
         workload, \
         NULL \
     ); \
-    if (!pickled_input){ \
+    Py_XDECREF(dumpstr); \
+    if (!pickled_input) { \
         return NULL; \
     } \
     char* workload_string; Py_ssize_t workload_size; \
@@ -556,17 +601,30 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
                                                         workload_string, \
                                                         workload_size, \
                                                         &ret); \
+    /* Py_XDECREF(pickled_input); */ \
 \
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer)){ \
+    PyObject* method_result = PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", self->serializer); \
+    if (!method_result) { \
+        Py_XDECREF(argList); \
+        Py_XDECREF(python_task); \
+        Py_XDECREF(method_result); \
         return NULL; \
     } \
     python_task->g_Task = new_task; \
-    if (_pygear_check_and_raise_exn(ret)){ \
+    if (_pygear_check_and_raise_exn(ret)) { \
+        Py_XDECREF(argList); \
+        Py_XDECREF(python_task); \
+        Py_XDECREF(method_result); \
         return NULL; \
     } \
-    return Py_BuildValue("O", python_task); \
+    PyObject* result = Py_BuildValue("O", python_task); \
+    Py_XDECREF(argList); \
+    python_task->g_Task = NULL; \
+    Py_XDECREF(python_task); \
+    Py_XDECREF(method_result); \
+    return result; \
 }
 
 CLIENT_ADD_TASK()
@@ -576,16 +634,14 @@ CLIENT_ADD_TASK(_high_background)
 CLIENT_ADD_TASK(_low)
 CLIENT_ADD_TASK(_low_background)
 
-
-static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObject* args){
+/* Return value: New reference */
+static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObject* args) {
     char* job_handle;
-
-    if (!PyArg_ParseTuple(args, "s", &job_handle)){
+    if (!PyArg_ParseTuple(args, "s", &job_handle)) {
         return NULL;
     }
 
     gearman_return_t gearman_return;
-
     gearman_task_st* new_task = gearman_client_add_task_status(
         self->g_Client,
         NULL,
@@ -593,52 +649,62 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
         job_handle,
         &gearman_return);
 
-    if (_pygear_check_and_raise_exn(gearman_return)){
+    if (_pygear_check_and_raise_exn(gearman_return)) {
         return NULL;
     }
-
     pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
     if (!python_task){
         return NULL;
     }
     python_task->g_Task = new_task;
-    return Py_BuildValue("O", python_task);
+    PyObject* ret = Py_BuildValue("O", python_task);
+    Py_XDECREF(python_task);
+    return ret;
 }
 
 
 #define CALLBACK_WRAPPER(CB) gearman_return_t pygear_client_wrap_callback_##CB(gearman_task_st* gear_task) { \
     pygear_ClientObject* client = (pygear_ClientObject*) gearman_task_context(gear_task); \
-    if (!client->cb_##CB){ \
+    if (!client->cb_##CB) { \
         return GEARMAN_SUCCESS; \
     } \
     /* Need to lock the GIL to avoid undefined behaviour */ \
     PyGILState_STATE gstate = PyGILState_Ensure(); \
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \
-    if (!PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", client->serializer)){ \
+    PyObject* method_result = PyObject_CallMethod((PyObject*) python_task, "set_serializer", "O", client->serializer); \
+    if (!method_result) { \
         PyErr_Print(); \
+        Py_XDECREF(argList); \
+        Py_XDECREF(python_task); \
+        Py_XDECREF(method_result); \
         PyGILState_Release(gstate); \
         return GEARMAN_ERROR; \
     } \
     python_task->g_Task = gear_task; \
     PyObject* callback_return = PyObject_CallFunction(client->cb_##CB, "O", python_task); \
-    if (!callback_return){ \
-        if (PyErr_Occurred()){ \
+    if (!callback_return) { \
+        if (PyErr_Occurred()) { \
             PyErr_Print(); \
         } \
     } \
     /* Release the thread */ \
+    Py_XDECREF(argList); \
+    python_task->g_Task = NULL; \
+    Py_XDECREF(python_task); \
+    Py_XDECREF(method_result); \
+    Py_XDECREF(callback_return); \
     PyGILState_Release(gstate); \
     return GEARMAN_SUCCESS; \
 }
 
-#define CALLBACK_SETTER(CB) static PyObject* pygear_client_set_##CB##_fn(pygear_ClientObject* self, PyObject* args){ \
+#define CALLBACK_SETTER(CB) static PyObject* pygear_client_set_##CB##_fn(pygear_ClientObject* self, PyObject* args) { \
     PyObject* callback_fn; \
-    if (!PyArg_ParseTuple(args, "O", &callback_fn)){ \
+    if (!PyArg_ParseTuple(args, "O", &callback_fn)) { \
         return NULL; \
     } \
     Py_INCREF(callback_fn); \
-    if (self->cb_##CB){ \
+    if (self->cb_##CB) { \
         Py_DECREF(self->cb_##CB); \
     } \
     self->cb_##CB = callback_fn; \
@@ -657,7 +723,7 @@ CALLBACK_HANDLE(complete)
 CALLBACK_HANDLE(exception)
 CALLBACK_HANDLE(fail)
 
-static PyObject* pygear_client_clear_fn(pygear_ClientObject* self){
+static PyObject* pygear_client_clear_fn(pygear_ClientObject* self) {
     gearman_client_clear_fn(self->g_Client);
     Py_XDECREF(self->cb_workload); self->cb_workload = NULL;
     Py_XDECREF(self->cb_created); self->cb_created = NULL;
@@ -670,8 +736,8 @@ static PyObject* pygear_client_clear_fn(pygear_ClientObject* self){
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_client_run_tasks(pygear_ClientObject* self){
-    if (_pygear_check_and_raise_exn(gearman_client_run_tasks(self->g_Client))){
+static PyObject* pygear_client_run_tasks(pygear_ClientObject* self) {
+    if (_pygear_check_and_raise_exn(gearman_client_run_tasks(self->g_Client))) {
         return NULL;
     }
     Py_RETURN_NONE;

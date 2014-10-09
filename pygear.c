@@ -33,31 +33,31 @@ PyGearExn_##EXN = PyErr_NewException("pygear." # EXN, NULL, NULL); \
 Py_INCREF(PyGearExn_##EXN); \
 PyModule_AddObject(m, #EXN, PyGearExn_##EXN);
 
-PyMODINIT_FUNC initpygear(void){
+PyMODINIT_FUNC initpygear(void) {
     PyObject* m;
 
     pygear_ClientType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&pygear_ClientType) < 0){
+    if (PyType_Ready(&pygear_ClientType) < 0) {
         return;
     }
 
     pygear_TaskType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&pygear_TaskType) < 0){
+    if (PyType_Ready(&pygear_TaskType) < 0) {
         return;
     }
 
     pygear_JobType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&pygear_JobType) < 0){
+    if (PyType_Ready(&pygear_JobType) < 0) {
         return;
     }
 
     pygear_WorkerType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&pygear_WorkerType) < 0){
+    if (PyType_Ready(&pygear_WorkerType) < 0) {
         return;
     }
 
     pygear_AdminType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&pygear_AdminType) < 0){
+    if (PyType_Ready(&pygear_AdminType) < 0) {
         return;
     }
 
@@ -152,8 +152,8 @@ case GEARMAN_##EXN: { \
     return 1; \
 }
 
-int _pygear_check_and_raise_exn(gearman_return_t returncode){
-    switch (returncode){
+int _pygear_check_and_raise_exn(gearman_return_t returncode) {
+    switch (returncode) {
         EXN_CASE_RAISE(SHUTDOWN);
         EXN_CASE_RAISE(SHUTDOWN_GRACEFUL);
         EXN_CASE_RAISE(ERRNO);
@@ -214,15 +214,16 @@ case GEARMAN_##RETTYPE: { \
     break; \
 }
 
-static PyObject* pygear_describe_returncode(void* self, PyObject* args){
+/* Return value: New reference */
+static PyObject* pygear_describe_returncode(void* self, PyObject* args) {
     int return_code;
-    if (!PyArg_ParseTuple(args, "i", &return_code)){
+    if (!PyArg_ParseTuple(args, "i", &return_code)) {
         return NULL;
     }
 
     char* ret_code_desc = NULL;
 
-    switch (return_code){
+    switch (return_code) {
         RET_CASE(SUCCESS);
         RET_CASE(IO_WAIT);
         RET_CASE(SHUTDOWN);
