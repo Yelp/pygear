@@ -626,6 +626,7 @@ catch:
     Py_XDECREF(serialized_data);
     python_job->g_Job = NULL;
     Py_XDECREF(python_job);
+    Py_XDECREF(callback_return);
 
     PyGILState_Release(gstate);
     if (retptr == SUCCESS) {
