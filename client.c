@@ -234,9 +234,7 @@ static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* 
         GEARMAN_CLIENT_GENERATE_UNIQUE
     };
 
-    int CLIENT_NUM_OPTIONS = 4;
     int client_options[CLIENT_NUM_OPTIONS];
-
     if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|iiii", kwlist,
                                       &client_options[0],
                                       &client_options[1],
@@ -267,7 +265,6 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self) {
         GEARMAN_CLIENT_GENERATE_UNIQUE
     };
 
-    int CLIENT_NUM_OPTIONS = 4;
     PyObject* client_options[CLIENT_NUM_OPTIONS];
     int i;
     for (i=0; i < 4; i++){
@@ -381,25 +378,21 @@ static PyObject* pygear_client_wait(pygear_ClientObject* self) {
     Py_RETURN_NONE;
 }
 
+/* Return NULL if error; return NONE if empty result; otherwise, return the result */
 #define CLIENT_DO(DOTYPE) \
 static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) { \
-    /* Mandatory arguments*/ \
+    /* Parsing input arguments*/ \
     char* function_name; \
     PyObject* workload; \
-    char* workload_string; \
     Py_ssize_t workload_size; \
-\
-    /* Optional arguments */ \
-    char* unique = NULL; \
+    char* unique = NULL;  /* optional */ \
     static char* kwlist[] = {"function", "workload", "unique", NULL}; \
-\
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|s", kwlist, \
         &function_name, &workload, &unique)) { \
         return NULL; \
     } \
 \
-    size_t result_size; \
-    gearman_return_t ret_ptr; \
+    /* Convert python input to string */ \
     PyObject* dumpstr = PyString_FromString("dumps"); \
     PyObject* pickled_input = PyObject_CallMethodObjArgs( \
         self->serializer, \
@@ -408,20 +401,29 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
         NULL \
     ); \
     Py_XDECREF(dumpstr); \
-    PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
+    char* workload_ptr; \
+    PyString_AsStringAndSize(pickled_input, &workload_ptr, &workload_size); \
     Py_XDECREF(pickled_input); \
 \
-    void* work_result = gearman_client_do##DOTYPE(self->g_Client, \
-                                          function_name, \
-                                          unique, \
-                                          workload_string, workload_size, \
-                                          &result_size, \
-                                          &ret_ptr); \
+    /* Call libgearmn function */ \
+    size_t result_size; \
+    gearman_return_t ret_ptr; \
+    void* work_result = gearman_client_do##DOTYPE( \
+        self->g_Client, \
+        function_name, \
+        unique, \
+        workload_ptr, \
+        workload_size, \
+        &result_size, \
+        &ret_ptr); /* work_result must be freed later to avoid memory leak */ \
     if (_pygear_check_and_raise_exn(ret_ptr)) { \
-        return NULL; \
+        free(work_result);
+        return NULL;
     } \
 \
+    /* Convert result to python format */
     PyObject* py_result = Py_BuildValue("s#", work_result, result_size); \
+    free(work_result); \
     if (py_result == Py_None) { \
         Py_XDECREF(py_result); \
         Py_RETURN_NONE; \
@@ -431,24 +433,25 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
     return ret; \
 }
 
+CLIENT_DO()
+CLIENT_DO(_high)
+CLIENT_DO(_low)
+
+/* Return NULL if error; return None if success */
 #define CLIENT_DO_BACKGROUND(DOTYPE) \
 static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) { \
-    /* Mandatory arguments*/ \
+    /* Parsing input arguments */ \
     char* function_name; \
     PyObject* workload; \
-    char* workload_string; \
     Py_ssize_t workload_size; \
-\
-    /* Optional arguments */ \
-    char* unique = NULL; \
+    char* unique = NULL; /* optional */ \
     static char* kwlist[] = {"function", "workload", "unique", NULL}; \
-\
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|s", kwlist, \
         &function_name, &workload, &unique)){ \
         return NULL; \
     } \
 \
-    char* job_handle = malloc(sizeof(char) * GEARMAN_JOB_HANDLE_SIZE); \
+    /* Convert python input to string */ \
     PyObject* dumpstr = PyString_FromString("dumps"); \
     PyObject* pickled_input = PyObject_CallMethodObjArgs( \
         self->serializer, \
@@ -457,16 +460,21 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
         NULL \
     ); \
     Py_XDECREF(dumpstr); \
-    PyString_AsStringAndSize(pickled_input, &workload_string, &workload_size); \
+    char* workload_ptr; \
+    PyString_AsStringAndSize(pickled_input, &workload_ptr, &workload_size); \
     Py_XDECREF(pickled_input); \
 \
+    /* Call libgearman function */ \
+    char* job_handle = malloc(sizeof(char) * GEARMAN_JOB_HANDLE_SIZE); \
     gearman_return_t work_result = gearman_client_do##DOTYPE##_background( \
         self->g_Client, \
         function_name, \
         unique, \
-        workload_string, workload_size, \
+        workload_ptr, \
+        workload_size, \
         job_handle); \
 \
+    /* We don't need job_handle */ \
     if (job_handle != NULL) { \
         free(job_handle); \
     } \
@@ -476,10 +484,6 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
     Py_RETURN_NONE; \
 }
 
-CLIENT_DO()
-CLIENT_DO(_high)
-CLIENT_DO(_low)
-
 CLIENT_DO_BACKGROUND()
 CLIENT_DO_BACKGROUND(_high)
 CLIENT_DO_BACKGROUND(_low)
@@ -488,7 +492,7 @@ static PyObject* pygear_client_do_job_handle(pygear_ClientObject* self) {
     return Py_BuildValue("s", gearman_client_do_job_handle(self->g_Client));
 }
 
-// Deprecatd
+// Deprecated
 static PyObject* pygear_client_do_status(pygear_ClientObject* self) {
     unsigned numerator, denominator;
     gearman_client_do_status(self->g_Client, &numerator, &denominator);
