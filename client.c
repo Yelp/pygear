@@ -211,10 +211,11 @@ static PyObject* pygear_client_errno(pygear_ClientObject* self) {
     return Py_BuildValue("i", gearman_client_errno(self->g_Client));
 }
 
-#define CLIENT_OPT_NON_BLOCKING "non_blocking"
-#define CLIENT_OPT_UNBUFFERED_RESULT "unbuffered_result"
-#define CLIENT_OPT_FREE_TASKS "free_tasks"
-#define CLIENT_OPT_GENERATE_UNIQUE "generate_unique"
+#define CLIENT_NUM_OPTIONS              4
+#define CLIENT_OPT_NON_BLOCKING         "non_blocking"
+#define CLIENT_OPT_UNBUFFERED_RESULT    "unbuffered_result"
+#define CLIENT_OPT_FREE_TASKS           "free_tasks"
+#define CLIENT_OPT_GENERATE_UNIQUE      "generate_unique"
 
 /* Return NULL if fail, Py_RETURN_NONE if success */
 static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) {
@@ -233,8 +234,8 @@ static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* 
         GEARMAN_CLIENT_GENERATE_UNIQUE
     };
 
-    int num_options = 4;
-    int client_options[num_options];
+    int CLIENT_NUM_OPTIONS = 4;
+    int client_options[CLIENT_NUM_OPTIONS];
 
     if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|iiii", kwlist,
                                       &client_options[0],
@@ -246,7 +247,7 @@ static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* 
     }
 
     int i;
-    for (i = 0; i < num_options; ++i) {
+    for (i = 0; i < CLIENT_NUM_OPTIONS; ++i) {
         if (client_options[i]) {
             gearman_client_add_options(self->g_Client, options_t_value[i]);
         } else {
@@ -266,8 +267,8 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self) {
         GEARMAN_CLIENT_GENERATE_UNIQUE
     };
 
-    int num_options = 4;
-    PyObject* client_options[num_options];
+    int CLIENT_NUM_OPTIONS = 4;
+    PyObject* client_options[CLIENT_NUM_OPTIONS];
     int i;
     for (i=0; i < 4; i++){
         client_options[i] = (gearman_client_has_option(self->g_Client, options_t_value[i]) ? Py_True : Py_False);
@@ -601,7 +602,7 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
                                                         workload_string, \
                                                         workload_size, \
                                                         &ret); \
-    /* Py_XDECREF(pickled_input); */ \
+    Py_XDECREF(pickled_input); \
 \
     PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None); \
     pygear_TaskObject* python_task = (pygear_TaskObject*) PyObject_CallObject((PyObject *) &pygear_TaskType, argList); \

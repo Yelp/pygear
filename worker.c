@@ -52,8 +52,8 @@ int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
     gearman_worker_set_options(self->g_Worker, worker_options);
 
     self->g_FunctionMap = PyDict_New();
-    self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
 
+    self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL) {
         PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
         PyErr_SetObject(PyExc_ImportError, err_string);
@@ -136,6 +136,7 @@ static PyObject* pygear_worker_errno(pygear_WorkerObject* self) {
     return Py_BuildValue("i", gearman_worker_errno(self->g_Worker));
 }
 
+#define PYGEAR_WORKER_NUM_OPTIONS       11
 #define PYGEAR_WORKER_ALLOCATED         "allocated"
 #define PYGEAR_WORKER_NON_BLOCKING      "non_blocking"
 #define PYGEAR_WORKER_PACKET_INIT       "packet_init"
@@ -179,8 +180,7 @@ static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* 
           GEARMAN_WORKER_MAX
     };
 
-    int num_options = 11;
-    int worker_options[num_options];
+    int worker_options[PYGEAR_WORKER_NUM_OPTIONS];
     if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|iiiiiiiiiii", kwlist,
                                       &worker_options[0],
                                       &worker_options[1],
@@ -198,7 +198,7 @@ static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* 
     }
 
     int i;
-    for (i = 0; i < num_options; ++i) {
+    for (i = 0; i < PYGEAR_WORKER_NUM_OPTIONS; ++i) {
         if (worker_options[i]) {
             gearman_worker_add_options(self->g_Worker, options_t_value[i]);
         } else {
@@ -227,10 +227,9 @@ static PyObject* pygear_worker_get_options(pygear_WorkerObject* self) {
 
     gearman_worker_options_t options = gearman_worker_options(self->g_Worker);
 
-    int num_options = 11;
-    PyObject* worker_options[num_options];
+    PyObject* worker_options[PYGEAR_WORKER_NUM_OPTIONS];
     int i;
-    for (i = 0; i < num_options; ++i) {
+    for (i = 0; i < PYGEAR_WORKER_NUM_OPTIONS; ++i) {
         worker_options[i] = (options & options_t_value[i] ? Py_True : Py_False);
     }
     PyObject* option_dictionary = Py_BuildValue(
