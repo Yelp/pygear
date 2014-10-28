@@ -628,6 +628,7 @@ catch:
     Py_XDECREF(callback_return);
 
     PyGILState_Release(gstate);
+
     if (retptr == SUCCESS) {
         *ret_ptr = GEARMAN_SUCCESS;
     } else if (retptr == FAIL) {

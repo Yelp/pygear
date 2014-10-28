@@ -45,21 +45,42 @@ an object that implements the loads(string) and dumps(object) methods.
     import pygear
 
     def reverse(job):
-       workload = job.workload()
-       return workload[::-1]
+        workload = job.workload()
+        return workload[::-1]
 
     w = pygear.Worker()
     w.add_server('localhost', 4730)
     w.add_function("reverse", 0, reverse)
-    w.work()
+
+    while True:
+        try:
+            w.set_timeout(1000)
+            w.work()
+        except pygear.TIMEOUT:
+            pass
 
 
 **Blocking Client:**
 
     import pygear
+
     c = pygear.Client()
     c.add_server('localhost', 4730)
-    print c.do('reverse', 'Hello python!')
+    result = c.do('reverse', 'Hello pygear!')
+    print result
+
+
+**Non-blocking Client:**
+
+    import pygear
+    
+    c = pygear.Client()
+    c.add_server('localhost', 4730)
+    res = c.do_background('reverse', 'Hello pygear!')
+    result = res['result']  # NULL if fail; None if success
+    job_handle = res['job_handle']
+    c.job_status(job_handle)
+
 
 **Asynchronous Client:**
 
@@ -71,7 +92,13 @@ an object that implements the loads(string) and dumps(object) methods.
     c = pygear.Client()
     c.add_server('localhost', 4730)
     c.set_complete_fn(oncomplete_callback)
-    c.add_task('reverse', 'Hello python!')
+
+    # add tasks to local queue
+    c.add_task('reverse', 'Hello pygear task 1!')
+    c.add_task('reverse', 'Hello pygear task 2!')
+    ...
+
+    # submit to server and run tasks
     c.run_tasks()
 
 ### Failure Handling

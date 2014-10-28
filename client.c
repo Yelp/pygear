@@ -490,6 +490,7 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
         free(job_handle); \
     } \
     PyObject* ret_dict = Py_BuildValue("{s:O, s:O}", "result", Py_None, "job_handle", job_handle_string); \
+    Py_XDECREF(job_handle_string); \
     return ret_dict; \
 }
 
