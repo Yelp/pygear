@@ -41,7 +41,7 @@ of the Python interpreter, signals arriving during the execution of
 libgearman maybe delayed for an arbitrary amount of time. In the worst case,
 libgearman hangs and the users are not able to terminate the program using
 Ctrl-C (KeyboardInterrupt). Thus, it is highly recommended that pygear
-users explicitly set timeouts for both workers and blocking clients.
+users explicitly call .set_timeout for both workers and blocking clients.
 
 
 ## Examples
