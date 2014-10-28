@@ -75,11 +75,9 @@ users explicitly call .set_timeout for both workers and blocking clients.
     c = pygear.Client()
     c.add_server('localhost', 4730)
 
-    # set timeout
-    c.set_timeout(5000)  # wait at most 5 seconds
-
     # submit foreground job to server and wait for the result
     try:
+        c.set_timeout(5000)  # wait at most 5 seconds
         result = c.do('reverse', 'Hello pygear!')
         print result
     except pygear.TIMEOUT:
