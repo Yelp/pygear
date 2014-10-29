@@ -38,9 +38,10 @@ an object that implements the loads(string) and dumps(object) methods.
 
 Since Python signal handlers can only occur between the "atomic" instructions
 of the Python interpreter, signals arriving during the execution of
-libgearman maybe delayed for an arbitrary amount of time.
-If the worker's timeout is not set, it is possible that libgearman hangs
-and the users are not able to terminate the program by Ctrl-C (KeyboardInterrupt).
+libgearman maybe delayed for an arbitrary amount of time. In the worst case,
+libgearman hangs and the users are not able to terminate the program using
+Ctrl-C (KeyboardInterrupt). Thus, it is highly recommended that pygear
+users explicitly call .set_timeout for both workers and blocking clients.
 
 
 ## Examples
@@ -74,11 +75,9 @@ and the users are not able to terminate the program by Ctrl-C (KeyboardInterrupt
     c = pygear.Client()
     c.add_server('localhost', 4730)
 
-    # set timeout
-    c.set_timeout(5000)  # wait at most 5 seconds
-
     # submit foreground job to server and wait for the result
     try:
+        c.set_timeout(5000)  # wait at most 5 seconds
         result = c.do('reverse', 'Hello pygear!')
         print result
     except pygear.TIMEOUT:
