@@ -47,7 +47,10 @@ typedef struct {
     PyObject* serializer;
 } pygear_WorkerObject;
 
-PyDoc_STRVAR(worker_module_docstring, "Represents a Gearman worker");
+PyDoc_STRVAR(worker_module_docstring, 
+"Represents a Gearman worker.\n"
+"Pygear wraps libgearman C/C++ client library with minimal modifications.\n"
+"See http://gearman.info/libgearman/ for details.");
 
 /* Class init methods */
 PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
@@ -159,99 +162,123 @@ PyDoc_STRVAR(pygear_worker_id_doc,
 
 static PyObject* pygear_worker_job_free_all(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_job_free_all_doc,
-"Free all jobs for this worker. Always return None.");
+"Free all jobs for this worker.");
 
 
-static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* args, PyObject* kwargs);
-PyDoc_STRVAR(pygear_worker_set_options_doc,
-"Set options for a worker.\n"
-"@param[in] options - Dictionary of options to set on the worker");
+static PyObject* pygear_worker_namespace(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_namespace_doc,
+"Get the current namespace of the worker. Only clients and workers sharing\n"
+"a same namespace can see one another's functions and workloads. Use\n"
+"'set_namespace' to set a namespace.\n\n"
+"@return string.\n"
+"@return None if no namespace has been set.");
 
 
-
-static PyObject* pygear_worker_timeout(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_timeout_doc,
-"See gearman_universal_timeout() for details.");
-
-static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_set_timeout_doc,
-"See gearman_universal_set_timeout() for details.");
+static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_register_doc,
+"Register function with job servers with an optional timeout. The timeout\n"
+"specifies how many seconds the server will wait before marking a job as\n"
+"failed.\n\n"
+"@param[in] function_name - Function name to register.\n"
+"@param[in] timeout - Optional timeout (in seconds) that specifies the maximum\n"
+"\ttime a job should execute. A value of 0 or not given means no timeout.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
 
 
 static PyObject* pygear_worker_remove_servers(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_remove_servers_doc,
 "Remove all servers currently associated with the worker.");
 
-static PyObject* pygear_worker_wait(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_wait_doc,
-"When in non-blocking I/O mode, wait for activity from one of the servers.");
-
-static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_register_doc,
-"Register function with job servers with an optional timeout. The timeout\n"
-"specifies how many seconds the server will wait before marking a job as\n"
-"failed. If timeout is zero, there is no timeout.\n"
-"@param[in] function_name Function name to register.\n"
-"@param[in] timeout Optional timeout (in seconds) that specifies the maximum\n"
-" time a job should. This is enforced on the job server. A value of 0 means\n"
-" an infinite time.\n"
-"@raises Pygear exception on failure.");
-
-static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_unregister_doc,
-"Unregister function with job servers.\n"
-"@param[in] function_name Function name to unregister.\n"
-"@raises Pygear exception on failure.");
-
-static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_unregister_all_doc,
-"Unregister all functions with job servers.\n"
-"@raises Pygear exception on failure.");
-
-
-
-
-
-static PyObject* pygear_worker_work(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_work_doc,
-"Wait for a job and call the appropriate callback function when it gets one.\n"
-"@raises Pygear exception on failure\n");
-
-
 
 static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_identifier_doc,
-"Set the identifier that the server uses to identify the worker.\n"
-"@param[in] identifier String new identifier for the worker");
+"Set the identifier that the server uses to identify the worker.\n\n"
+"@param[in] identifier - New identifier string for the worker.\n\n"
+"@return None on success.\n"
+"@return NULL on failure."
+);
 
-static PyObject* pygear_worker_set_namespace(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_set_namespace_doc,
-"Set the namespace of the worker\n"
-"@param[in] namespace String namespace to assign the worker to.\n"
-"Only clients sharing a namespace can see each other's data.");
-
-static PyObject* pygear_worker_namespace(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_namespace_doc,
-"Get the current namespace of the worker\n"
-"@return The current namespace, or None if no namespace has been set");
 
 static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_log_fn_doc,
-"Register a callback that will be passed all error messages that are\n"
-"Given to the worker.\n"
-"@param[in] function Method to be called. Must take a string.\n"
-"@param[in] loglevel How verbose logging should be. Must be one of\n"
-"the pygear.PYGEAR_VERBOSE_* constants.\n");
+"Set logging function for this worker.\n\n"
+"@param[in] function - Function to call when there is a logging message.\n"
+"@param[in] context - Arguments to pass into the callback function.\n"
+"@param[in] verbose - Verbosity level threshold. Only call function\n"
+"\twhen the logging message is equal to or less verbose than this.\n"
+"\tMust be one of the pygear.PYGEAR_VERBOSE_* constants.\n\n"
+"@return None on success.\n"
+"@return NULL on failure.");
+
+
+static PyObject* pygear_worker_set_namespace(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_set_namespace_doc,
+"Set a namespace for this worker. Only clients and workers sharing a same\n"
+"namespace can see one another's workloads and functions.\n\n"
+"@param[in] namespace - A namespace string to assign the worker to.\n\n"
+"@return None on success.\n"
+"@return NULL on failure.");
+
+
+static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* args, PyObject* kwargs);
+PyDoc_STRVAR(pygear_worker_set_options_doc,
+"Set options for a worker.\n\n"
+"@param[in] options - Dictionary of options to set on the worker.");
+
 
 static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_serializer_doc,
 "Specify the object to be used to serialize data passed through gearman.\n"
-"By default, pygear will use json to convert data to a string\n"
+"By default, pygear will use 'json' to convert data to a string\n"
 "representation during transit and reconstitute it on the other end.\n"
 "You can replace the serializer with your own as long as it implements\n"
 "the 'dumps' and 'loads' methods. 'dumps' must return a string, and loads\n"
-"must take a string.\n"
-"@param[in] serializer Object implementing dumps and loads");
+"must take a string.\n\n"
+"@param[in] serializer - Object implementing dumps and loads.");
+
+
+static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_set_timeout_doc,
+"Set the current timeout value, in milliseconds, for the worker.\n\n"
+"@param[in] timeout - Timeout in milliseconds.");
+
+
+static PyObject* pygear_worker_timeout(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_timeout_doc,
+"Get the current timeout value, in milliseconds, for the worker.\n\n"
+"@return integer.");
+
+
+static PyObject* pygear_worker_wait(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_wait_doc,
+"When in non-blocking I/O mode, wait for activity from one of the servers.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
+
+static PyObject* pygear_worker_work(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_work_doc,
+"Wait for a job and call the appropriate function when it gets one.\n"
+"Note that this may run for an indefinite time and blocks KeyboardInterrupt\n"
+"from the python interpreter. Call 'set_timeout' beforehand to avoid this.\n\n"
+"@raises pygear exception on failure.\n");
+
+
+static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_unregister_doc,
+"Unregister a function with job servers.\n\n"
+"@param[in] function_name - Function name to unregister.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
+
+static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_unregister_all_doc,
+"Unregister all functions with job servers.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
 
 /* Module method specification */
 static PyMethodDef worker_module_methods[] = {

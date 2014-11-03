@@ -309,11 +309,142 @@ static PyObject* pygear_worker_job_free_all(pygear_WorkerObject* self) {
 }
 
 
+static PyObject* pygear_worker_namespace(pygear_WorkerObject* self) {
+    const char* namespace = gearman_worker_namespace(self->g_Worker);
+    return PyString_FromString(namespace);
+}
 
 
+static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* args) {
+    char* function_name;
+    unsigned timeout;
+    if (!PyArg_ParseTuple(args, "sI", &function_name, &timeout)) {
+        return NULL;
+    }
+    gearman_return_t result = gearman_worker_register(self->g_Worker, function_name, timeout);
+    if (_pygear_check_and_raise_exn(result)) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
 
 
-/* Return NULL if fail, Py_RETURN_NONE if success */
+static PyObject* pygear_worker_remove_servers(pygear_WorkerObject* self) {
+    gearman_worker_remove_servers(self->g_Worker);
+    Py_RETURN_NONE;
+}
+
+
+static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObject* args) {
+    char* id;
+    int id_size;
+    if (!PyArg_ParseTuple(args, "s#", &id, &id_size)) {
+        return NULL;
+    }
+    gearman_return_t result = gearman_worker_set_identifier(self->g_Worker, id, id_size);
+    if (_pygear_check_and_raise_exn(result)) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+
+/* private method */
+static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context) {
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    PyObject* python_cb_method = (PyObject*) context;
+    PyObject* python_line = PyString_FromString(line);
+    PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_line);
+    if (!callback_return) {
+        if (PyErr_Occurred()) {
+            PyErr_Print();
+        }
+    }
+    Py_XDECREF(python_line);
+    Py_XDECREF(callback_return);
+    PyGILState_Release(gstate);
+}
+
+
+static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args) {
+    PyObject* logging_cb;
+    int log_level;
+    if (!PyArg_ParseTuple(args, "Oi", &logging_cb, &log_level)) {
+        return NULL;
+    }
+    Py_INCREF(logging_cb);
+    gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, logging_cb, log_level);
+    Py_DECREF(logging_cb);
+    Py_RETURN_NONE;
+}
+
+
+static PyObject* pygear_worker_set_namespace(pygear_WorkerObject* self, PyObject* args) {
+    char* namespace_key;
+    int namespace_key_size;
+    if (!PyArg_ParseTuple(args, "s#", &namespace_key, &namespace_key_size)) {
+        return NULL;
+    }
+    gearman_worker_set_namespace(self->g_Worker, namespace_key, namespace_key_size);
+    Py_RETURN_NONE;
+}
+
+
+static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* args, PyObject* kwargs) {
+    static char *kwlist[] = {
+        PYGEAR_WORKER_ALLOCATED,
+        PYGEAR_WORKER_NON_BLOCKING,
+        PYGEAR_WORKER_PACKET_INIT,
+        PYGEAR_WORKER_GRAB_JOB_IN_USE,
+        PYGEAR_WORKER_PRE_SLEEP_IN_USE,
+        PYGEAR_WORKER_WORK_JOB_IN_USE,
+        PYGEAR_WORKER_CHANGE,
+        PYGEAR_WORKER_GRAB_UNIQ,
+        PYGEAR_WORKER_TIMEOUT_RETURN,
+        PYGEAR_WORKER_GRAB_ALL,
+        PYGEAR_WORKER_MAX,
+        NULL
+    };
+    static int options_t_value[] = {
+        GEARMAN_WORKER_ALLOCATED,
+        GEARMAN_WORKER_NON_BLOCKING,
+        GEARMAN_WORKER_PACKET_INIT,
+        GEARMAN_WORKER_GRAB_JOB_IN_USE,
+        GEARMAN_WORKER_PRE_SLEEP_IN_USE,
+        GEARMAN_WORKER_WORK_JOB_IN_USE,
+        GEARMAN_WORKER_CHANGE,
+        GEARMAN_WORKER_GRAB_UNIQ,
+        GEARMAN_WORKER_TIMEOUT_RETURN,
+        GEARMAN_WORKER_GRAB_ALL,
+        GEARMAN_WORKER_MAX
+    };
+    int worker_options[PYGEAR_WORKER_NUM_OPTIONS];
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|iiiiiiiiiii", kwlist,
+        &worker_options[0],
+        &worker_options[1],
+        &worker_options[2],
+        &worker_options[3],
+        &worker_options[4],
+        &worker_options[5],
+        &worker_options[6],
+        &worker_options[7],
+        &worker_options[8],
+        &worker_options[9],
+        &worker_options[10])) {
+        return NULL;
+    }
+    int i;
+    for (i = 0; i < PYGEAR_WORKER_NUM_OPTIONS; ++i) {
+        if (worker_options[i]) {
+            gearman_worker_add_options(self->g_Worker, options_t_value[i]);
+        } else {
+            gearman_worker_remove_options(self->g_Worker, options_t_value[i]);
+        }
+    }
+    Py_RETURN_NONE;
+}
+
+
 static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObject* args) {
     PyObject* serializer = NULL;
     if (!PyArg_ParseTuple(args, "O", &serializer)) {
@@ -334,77 +465,6 @@ static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObjec
 }
 
 
-
-
-
-/* Return NULL if fail, Py_RETURN_NONE if success */
-static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* args, PyObject* kwargs) {
-    static char *kwlist[] = {
-        PYGEAR_WORKER_ALLOCATED,
-        PYGEAR_WORKER_NON_BLOCKING,
-        PYGEAR_WORKER_PACKET_INIT,
-        PYGEAR_WORKER_GRAB_JOB_IN_USE,
-        PYGEAR_WORKER_PRE_SLEEP_IN_USE,
-        PYGEAR_WORKER_WORK_JOB_IN_USE,
-        PYGEAR_WORKER_CHANGE,
-        PYGEAR_WORKER_GRAB_UNIQ,
-        PYGEAR_WORKER_TIMEOUT_RETURN,
-        PYGEAR_WORKER_GRAB_ALL,
-        PYGEAR_WORKER_MAX,
-        NULL
-    };
-
-    static int options_t_value[] = {
-          GEARMAN_WORKER_ALLOCATED,
-          GEARMAN_WORKER_NON_BLOCKING,
-          GEARMAN_WORKER_PACKET_INIT,
-          GEARMAN_WORKER_GRAB_JOB_IN_USE,
-          GEARMAN_WORKER_PRE_SLEEP_IN_USE,
-          GEARMAN_WORKER_WORK_JOB_IN_USE,
-          GEARMAN_WORKER_CHANGE,
-          GEARMAN_WORKER_GRAB_UNIQ,
-          GEARMAN_WORKER_TIMEOUT_RETURN,
-          GEARMAN_WORKER_GRAB_ALL,
-          GEARMAN_WORKER_MAX
-    };
-
-    int worker_options[PYGEAR_WORKER_NUM_OPTIONS];
-    if (! PyArg_ParseTupleAndKeywords(args, kwargs, "|iiiiiiiiiii", kwlist,
-                                      &worker_options[0],
-                                      &worker_options[1],
-                                      &worker_options[2],
-                                      &worker_options[3],
-                                      &worker_options[4],
-                                      &worker_options[5],
-                                      &worker_options[6],
-                                      &worker_options[7],
-                                      &worker_options[8],
-                                      &worker_options[9],
-                                      &worker_options[10]
-                                      )) {
-        return NULL;
-    }
-
-    int i;
-    for (i = 0; i < PYGEAR_WORKER_NUM_OPTIONS; ++i) {
-        if (worker_options[i]) {
-            gearman_worker_add_options(self->g_Worker, options_t_value[i]);
-        } else {
-            gearman_worker_remove_options(self->g_Worker, options_t_value[i]);
-        }
-    }
-
-    Py_RETURN_NONE;
-}
-
-/* Return value: New reference */
-
-/* Return value: New reference */
-static PyObject* pygear_worker_timeout(pygear_WorkerObject* self) {
-    return Py_BuildValue("i", gearman_worker_timeout(self->g_Worker));
-}
-
-/* Return NULL if fail, Py_RETURN_NONE if success */
 static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* args) {
     int timeout;
     if (!PyArg_ParseTuple(args, "i", &timeout)) {
@@ -414,44 +474,11 @@ static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* 
     Py_RETURN_NONE;
 }
 
-static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context) {
-    PyGILState_STATE gstate = PyGILState_Ensure();
 
-    PyObject* python_cb_method = (PyObject*) context; // borrowed ref
-
-    PyObject* python_line = PyString_FromString(line);
-    PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_line);
-    
-    if (!callback_return) {
-        if (PyErr_Occurred()) {
-            PyErr_Print();
-        }
-    }
-
-    Py_XDECREF(python_line);
-    Py_XDECREF(callback_return);
-
-    PyGILState_Release(gstate);
+static PyObject* pygear_worker_timeout(pygear_WorkerObject* self) {
+    return Py_BuildValue("i", gearman_worker_timeout(self->g_Worker));
 }
 
-/* Return NULL if fail, Py_RETURN_NONE if success */
-static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args) {
-    PyObject* logging_cb;
-    int log_level;
-    if (!PyArg_ParseTuple(args, "Oi", &logging_cb, &log_level)) {
-        return NULL;
-    }
-    Py_INCREF(logging_cb);
-    gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, logging_cb, log_level);
-    Py_DECREF(logging_cb);
-    Py_RETURN_NONE;
-}
-
-
-static PyObject* pygear_worker_remove_servers(pygear_WorkerObject* self) {
-    gearman_worker_remove_servers(self->g_Worker);
-    Py_RETURN_NONE;
-}
 
 static PyObject* pygear_worker_wait(pygear_WorkerObject* self) {
     gearman_return_t result = gearman_worker_wait(self->g_Worker);
@@ -461,46 +488,11 @@ static PyObject* pygear_worker_wait(pygear_WorkerObject* self) {
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* args) {
-    char* function_name;
-    unsigned timeout;
-    if (!PyArg_ParseTuple(args, "sI", &function_name, &timeout)) {
-        return NULL;
-    }
-    gearman_return_t result = gearman_worker_register(self->g_Worker, function_name, timeout);
-    if (_pygear_check_and_raise_exn(result)) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
 
-static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* args) {
-    char* function_name;
-    if (!PyArg_ParseTuple(args, "s", &function_name)) {
-        return NULL;
-    }
-    gearman_return_t result = gearman_worker_unregister(self->g_Worker, function_name);
-    if (_pygear_check_and_raise_exn(result)) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
-static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self) {
-    gearman_return_t result = gearman_worker_unregister_all(self->g_Worker);
-    if (_pygear_check_and_raise_exn(result)) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
-/* Return value: New reference */
-
-
-
-
+/* private method */
 void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
-                                   size_t* result_size, gearman_return_t* ret_ptr) {
+    size_t* result_size, gearman_return_t* ret_ptr) {
+
     PyGILState_STATE gstate = PyGILState_Ensure();
 
     // borrowed refs
@@ -684,6 +676,7 @@ catch:
     return NULL;
 }
 
+
 static PyObject* pygear_worker_work(pygear_WorkerObject* self) {
     gearman_return_t result = gearman_worker_work(self->g_Worker);
     if (PyErr_Occurred()) {
@@ -696,32 +689,23 @@ static PyObject* pygear_worker_work(pygear_WorkerObject* self) {
 }
 
 
-
-static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObject* args) {
-    char* id;
-    int id_size;
-    if (!PyArg_ParseTuple(args, "s#", &id, &id_size)) {
+static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* args) {
+    char* function_name;
+    if (!PyArg_ParseTuple(args, "s", &function_name)) {
         return NULL;
     }
-    gearman_return_t result = gearman_worker_set_identifier(self->g_Worker, id, id_size);
+    gearman_return_t result = gearman_worker_unregister(self->g_Worker, function_name);
     if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
-static PyObject* pygear_worker_set_namespace(pygear_WorkerObject* self, PyObject* args) {
-    char* namespace_key;
-    int namespace_key_size;
-    if (!PyArg_ParseTuple(args, "s#", &namespace_key, &namespace_key_size)) {
+
+static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self) {
+    gearman_return_t result = gearman_worker_unregister_all(self->g_Worker);
+    if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
-    gearman_worker_set_namespace(self->g_Worker, namespace_key, namespace_key_size);
     Py_RETURN_NONE;
-}
-
-/* Return value: New reference */
-static PyObject* pygear_worker_namespace(pygear_WorkerObject* self) {
-    const char* namespace = gearman_worker_namespace(self->g_Worker);
-    return PyString_FromString(namespace);
 }
