@@ -54,29 +54,120 @@ PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds);
 void Worker_dealloc(pygear_WorkerObject* self);
 
+/* Private methods */
+void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
+    size_t* result_size, gearman_return_t* ret_ptr);
+
 /* Method definitions */
+static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_add_function_doc,
+"Register and add callback function for worker. To remove functions that have\n"
+"been added, call 'unregister' or 'unregister_all'.\n\n"
+"@param[in] function_name - Function name to register.\n"
+"@param[in] timeout - Timeout (in seconds) that specifies the maximum time a\n"
+"\tjob should execute. A value of 0 means infinite time.\n"
+"@param[in] function - Function (that takes a Job instance) to run.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.\n\n"
+"Example:\n"
+"def reverse(job):\n"
+"    return job.workload()[::-1]\n\n"
+"w.add_function('reverse', 1, reverse)  # 1 second timeout");
+
+
+static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_add_server_doc,
+"Add a job server to a worker. This goes into a list of servers that can be\n"
+"used to run tasks. No socket I/O happens here, it is just added to a list.\n\n"
+"@param[in] host - Hostname or IP address (IPv4 or IPv6) of the server to add.\n"
+"@param[in] port - Port of the server to add.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
+
+static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_add_servers_doc,
+"Add a list of job servers to a worker.\n\n"
+"@param[in] servers_list - A list of servers each in the format of 'HOST[:PORT]'.\n"
+"\tHOST can be a hostname or an IP address.\n"
+"\tPORT is default as 4730 if not set.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.\n\n"
+"Example:\n"
+"servers_list = ['localhost234', 'jobserver2.domain.com:7003', '10.0.0.3']\n"
+"w.add_servers(servers_list)");
+
+
 static PyObject* pygear_worker_clone(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_clone_doc,
-"Clone a worker structure.\n"
-"@return On success, a new Worker instance");
+"Clone a pygear worker.\n\n"
+"@return new Worker instance.");
 
-static PyObject* pygear_worker_error(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_error_doc,
-"See gearman_error() for details.");
+
+static PyObject* pygear_worker_echo(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_echo_doc,
+"Send a message to all servers to see if they echo it back. This is for\n"
+"testing the connection to the servers.\n\n"
+"@param[in] workload - Workload to ask the server to echo back.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
 
 static PyObject* pygear_worker_errno(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_errno_doc,
-"See gearman_errno() for details.");
+"Report on the last error code that the worker reported/stored.\n"
+"Use 'set_log_fn' if you are interested in recording all errors.\n\n"
+"@return integer.");
+
+
+static PyObject* pygear_worker_error(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_error_doc,
+"Report on the last errors that the worker reported/stored.\n"
+"Use 'set_log_fn' if you are interested in recording all errors.\n\n"
+"@return string.");
+
+
+static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_worker_function_exists_doc,
+"See if a function exists in the server. It will return False\n"
+"if the function is currently being de-allocated.\n\n"
+"@param[in] function_name - Function name for search.\n\n"
+"@return bool.");
+
+
+static PyObject* pygear_worker_get_options(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_get_options_doc,
+"Get options for a worker.\n\n"
+"@return dictionary of options currently set on the worker.");
+
+
+static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_grab_job_doc,
+"Takes a job from one of the job servers. The caller is responsible for\n"
+"freeing the job once it is done. This does not used the callback interface,\n"
+"which means result must be sent back to the job server manually. This\n"
+"interface is used in testing, and is rarely the one to program against.\n\n"
+"@return new Job object on success.\n"
+"@return NULL on failure.");
+
+
+static PyObject* pygear_worker_id(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_id_doc,
+"Get the ID of the worker.\n\n"
+"@return integer.");
+
+
+static PyObject* pygear_worker_job_free_all(pygear_WorkerObject* self);
+PyDoc_STRVAR(pygear_worker_job_free_all_doc,
+"Free all jobs for this worker. Always return None.");
+
 
 static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_worker_set_options_doc,
 "Set options for a worker.\n"
-"@param[in] options Dictionary of options to set on the worker");
+"@param[in] options - Dictionary of options to set on the worker");
 
-static PyObject* pygear_worker_get_options(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_get_options_doc,
-"Get options for a worker.\n"
-"@return Dictionary of options currently set on the worker");
+
 
 static PyObject* pygear_worker_timeout(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_timeout_doc,
@@ -86,23 +177,6 @@ static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* 
 PyDoc_STRVAR(pygear_worker_set_timeout_doc,
 "See gearman_universal_set_timeout() for details.");
 
-static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_add_server_doc,
-"Add a job server to a worker. This goes into a list of servers that can be\n"
-"used to run tasks. No socket I/O happens here, it is just added to a list.\n"
-"@param[in] host Hostname or IP address (IPv4 or IPv6) of the server to add.\n"
-"@param[in] port Port of the server to add.\n"
-"@raises Pygear exception on failure.");
-
-static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_add_servers_doc,
-"Add a list of job servers to a worker. The format for the server list is:\n"
-"[ 'SERVER[:PORT]', [,SERVER[:PORT]]... ]\n"
-"Some examples are:\n"
-"['10.0.0.1, '10.0.0.2', '10.0.0.3']\n"
-"['localhost234', 'jobserver2.domain.com:7003', '10.0.0.3']\n"
-"@param[in] servers Server list described above.\n"
-"@raises Pygear exception on failure.");
 
 static PyObject* pygear_worker_remove_servers(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_remove_servers_doc,
@@ -134,49 +208,16 @@ PyDoc_STRVAR(pygear_worker_unregister_all_doc,
 "Unregister all functions with job servers.\n"
 "@raises Pygear exception on failure.");
 
-static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_grab_job_doc,
-"Get a job from one of the job servers. This does not used the callback\n"
-"interface below, which means results must be sent back to the job server\n"
-"manually. It is also the responsibility of the caller to free the job once\n"
-"it has been completed.\n"
-"@return On success, a new Job object");
 
-static PyObject* pygear_worker_free_all(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_free_all_doc,
-"Free all jobs for a gearman structure.");
 
-static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_function_exists_doc,
-"See if a function exists in the server. It will not return\n"
-"true if the function is currently being de-allocated.\n"
-"@param[in] function_name Function name for search.\n"
-"@return bool");
 
-static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_add_function_doc,
-"Register and add callback function for worker.\n"
-"@param[in] function_name Name of funtion to register\n"
-"@param[in] timeout Timeout in seconds for the job execution\n"
-"@param[in] function A function that takes a Job instance\n"
-"@raises Pygear exception on failure\n");
 
 static PyObject* pygear_worker_work(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_work_doc,
 "Wait for a job and call the appropriate callback function when it gets one.\n"
 "@raises Pygear exception on failure\n");
 
-static PyObject* pygear_worker_echo(pygear_WorkerObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_worker_echo_doc,
-"Send data to all job servers to see if they echo it back. This is a test\n"
-"function to see if job servers are responding properly.\n"
-"@param[in] workload The workload to ask the server to echo back.\n"
-"@raises Pygear exception on failure.");
 
-static PyObject* pygear_worker_id(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_id_doc,
-"Get the ID of the worker\n"
-"@return Integer id of the worker");
 
 static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_identifier_doc,
@@ -229,7 +270,7 @@ static PyMethodDef worker_module_methods[] = {
     _WORKERMETHOD(unregister,       METH_VARARGS)
     _WORKERMETHOD(unregister_all,   METH_NOARGS)
     _WORKERMETHOD(grab_job,         METH_NOARGS)
-    _WORKERMETHOD(free_all,         METH_NOARGS)
+    _WORKERMETHOD(job_free_all,     METH_NOARGS)
     _WORKERMETHOD(function_exists,  METH_VARARGS)
     _WORKERMETHOD(add_function,     METH_VARARGS)
     _WORKERMETHOD(work,             METH_NOARGS)
