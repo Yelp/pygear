@@ -40,7 +40,7 @@ def main():
     start_datetime = datetime.datetime.now()
     stop_time = time.time() + options.seconds
 
-    w.set_log_fn(log_func, pygear.PYGEAR_VERBOSE_INFO)
+#    w.set_log_fn(log_func, pygear.PYGEAR_VERBOSE_INFO)
 
     while time.time() < stop_time:
         try:

@@ -65,119 +65,207 @@ int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds);
 void Client_dealloc(pygear_ClientObject* self);
 
 /* Method definitions */
-static PyObject* pygear_client_clone(pygear_ClientObject* self);
-PyDoc_STRVAR(pygear_client_clone_doc,
-"Clone a client structure.");
-
 static PyObject* pygear_client_add_server(pygear_ClientObject *self, PyObject *args);
 PyDoc_STRVAR(pygear_client_add_server_doc,
-"Add a list of job servers to a client. The format for the server list is:\n"
-"[ 'SERVER[:PORT]', [,SERVER[:PORT]]... ]\n"
-"Some examples are:\n"
-"['10.0.0.1, '10.0.0.2', '10.0.0.3']\n"
-"['localhost234', 'jobserver2.domain.com:7003', '10.0.0.3']\n"
-"@param[in] servers Server list described above.\n"
-"@raises Pygear exception on failure.");
+"Add a job server to a client. This goes into a list of servers that can be\n"
+"used to run tasks. No socket I/O happens here, it is just added to a list.\n\n"
+"@param[in] host - Hostname or IP address (IPv4 or IPv6) of the server to add.\n"
+"@param[in] port - Port of the server to add.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.\n\n"
+"Example:\n"
+"c.add_servers('localhost', 4730)");
+
 
 static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_add_servers_doc,
-"Add a job server to a client. This goes into a list of servers that can be\n"
-"used to run tasks. No socket I/O happens here, it is just added to a list.\n"
-"@param[in] host Hostname or IP address (IPv4 or IPv6) of the server to add.\n"
-"@param[in] port Port of the server to add.\n"
-"@raises Pygear exception on failure.");
+"Add a list of job servers to a worker.\n\n"
+"@param[in] servers_list - A list of servers each in the format of 'HOST[:PORT]'.\n"
+"\tHOST can be a hostname or an IP address.\n"
+"\tPORT is default as 4730 if not set.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.\n\n"
+"Example:\n"
+"servers_list = ['localhost234', 'jobserver2.domain.com:7003', '10.0.0.3']\n"
+"c.add_servers(servers_list)");
+
 
 static PyObject* pygear_client_add_task(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_doc,
-"Add a task to be run in parallel.\n\n"
-"@param[in] function_name The name of the function to run.\n"
-"@param[in] workload The workload to pass to the function when it is run.\n"
-"@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
-"@return A newly created Task object.\n"
-"@raises Pygear exception on failure.");
+"Add a foreground task to be run in parallel. This task is locally queued and will only be\n"
+"sent to job server when 'run_tasks' is called. The client will wait for the result from\n"
+"the server during 'run_tasks'.\n"
+"@param[in] function_name - The name of the function to run.\n"
+"@param[in] workload - The workload to pass to the function when it is run.\n"
+"@param[in] unique - Optional unique job identifier, or None for a new UUID.\n\n"
+"@return new Task instance on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
 
 static PyObject* pygear_client_add_task_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_background_doc,
-"Add a background task to be run in parallel.\n"
-"See gearman_client_add_task() for details.");
+"Add a background task to be run in parallel. This task is locally queued and will only be\n"
+"sent to job server when 'run_tasks' is called. The client will return immediately without\n"
+"waiting for the result of the task during 'run_tasks'.\n\n"
+"@param[in] function_name - The name of the function to run.\n"
+"@param[in] workload - The workload to pass to the function when it is run.\n"
+"@param[in] unique - Optional unique job identifier, or None for a new UUID.\n\n"
+"@return new Task instance on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
 
 static PyObject* pygear_client_add_task_high(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_high_doc,
-"Add a high priority task to be run in parallel.\n"
-"See gearman_client_add_task() for details.");
+"Add a high priority foreground task to be run in parallel.\n"
+"See 'add_task' for details.");
+
 
 static PyObject* pygear_client_add_task_high_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_high_background_doc,
 "Add a high priority background task to be run in parallel.\n"
-"See gearman_client_add_task() for details.");
+"See 'add_task_background' for details.");
+
 
 static PyObject* pygear_client_add_task_low(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_low_doc,
-"Add a low priority task to be run in parallel.\n"
-"See gearman_client_add_task() for details.");
+"Add a low priority foreground task to be run in parallel.\n"
+"See 'add_task' for details.");
+
 
 static PyObject* pygear_client_add_task_low_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_add_task_low_background_doc,
 "Add a low priority background task to be run in parallel.\n"
-"See gearman_client_add_task() for details.");
+"See 'add_task_background' for details.");
+
 
 static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_add_task_status_doc,
-"Add task to get the status for a backgound task in parallel.\n"
-"@param[in] job_handle The job handle to get status for.\n"
-"@raises Pygear exception on failure\n"
-"@return On success, a new Task instance");
+"Add a task to get the status for a backgound task in parallel.\n\n"
+"@param[in] job_handle - The job handle of the background task.\n\n"
+"@return new Task instance on success.\n"
+"@return NULL and raises pygear exception on failure.\n");
+
+
+static PyObject* pygear_client_clear_fn(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_clear_fn_doc,
+"Clear all task callback functions.");
+
+
+static PyObject* pygear_client_clone(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_clone_doc,
+"Clone a pygear client.\n\n"
+"@return new Client instance.");
+
 
 static PyObject* pygear_client_do(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_do_doc,
-"Run a single task synchronously and return a result.\n"
-"@param[in] function_name The name of the function to run.\n"
-"@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
-"@param[in] workload The workload to pass to the function when it is run.\n"
-"@return The result of the task.\n"
-"@raises Pygear exception on failure. If the exception is one of\n"
-" GEARMAN_WORK_DATA, GEARMAN_WORK_WARNING, or GEARMAN_WORK_STATUS, the caller\n"
-" should take any actions to handle the event and then call this function\n"
-" again. This may happen multiple times until a GEARMAN_WORK_ERROR,\n"
-" GEARMAN_WORK_FAIL, or GEARMAN_SUCCESS (work complete) is returned. For\n"
-" GEARMAN_WORK_DATA or GEARMAN_WORK_WARNING, the result_size will be set to\n"
-" the intermediate data chunk being returned and an allocated data buffer\n"
-" will be returned. For GEARMAN_WORK_STATUS, the caller can use\n"
-" gearman_client_do_status() to get the current tasks status.");
+"Send a foreground task to server immediately and wait for its result (blocking).\n\n"
+"@param[in] function_name - The name of the function to run.\n"
+"@param[in] unique - Optional unique job identifier, or None for a new UUID.\n"
+"@param[in] workload - The workload to pass to the function when it is run.\n\n"
+"@return the result of the task (None if empty result) on success.\n"
+"@return NULL and raises pygear exception on failure.\n\n"
+" Note: If the exception is one of GEARMAN_WORK_DATA, GEARMAN_WORK_WARNING,\n"
+" or GEARMAN_WORK_STATUS, the caller should take actions to handle the event\n"
+" and call this function again. This may happen multiple times until a\n"
+" GEARMAN_WORK_ERROR, GEARMAN_WORK_FAIL, or GEARMAN_SUCCESS (work complete)\n"
+" is returned. For GEARMAN_WORK_DATA or GEARMAN_WORK_WARNING, the result size\n"
+" will be set to the intermediate data chunk being returned and an allocated\n"
+" data buffer will be returned. For GEARMAN_WORK_STATUS, the caller can use\n"
+" 'do_status' to get the current task status.");
+
 
 static PyObject* pygear_client_do_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_do_background_doc,
-"Run a background task and return an allocated result.\n"
-"See Client.do() for parameter and return information.");
+"Send a background task to server and return immediately without waiting for\n"
+"the result (non-blocking).\n\n"
+"@param[in] function_name - The name of the function to run.\n"
+"@param[in] unique - Optional unique job identifier, or None for a new UUID.\n"
+"@param[in] workload - The workload to pass to the function when it is run.\n\n"
+"@return job_handle (string) of the task on success.\n"
+"@return NULL and raises pygear exception on failure.\n"
+"See 'do' for handling different exceptions.");
+
 
 static PyObject* pygear_client_do_high(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_do_high_doc,
-"Run a high priority task and return an allocated result.\n"
-"See Client.do() for parameter and return information.");
+"Run a high priority foreground task and return the result.\n"
+"See 'do' for parameters and return information.");
+
 
 static PyObject* pygear_client_do_high_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_do_high_background_doc,
-"Run a high priority background task and return an allocated result.\n"
-"See Client.do() for parameter and return information.");
+"Run a high priority background task and return the job handle.\n"
+"See 'do_background' for parameters and return information.");
+
 
 static PyObject* pygear_client_do_low(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_do_low_doc,
-"Run a low priority task and return an allocated result.\n"
-"See Client.do() for parameter and return information.");
+"Run a low priority foreground task and return the result.\n"
+"See 'do' for parameters and return information.");
+
 
 static PyObject* pygear_client_do_low_background(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_do_low_background_doc,
-"Run a low priority background task and return an allocated result.\n"
-"See Client.do() for parameter and return information.");
+"Run a low priority background task and return the job handle.\n"
+"See 'do_background' for parameters and return information.");
+
+
+static PyObject* pygear_client_do_job_handle(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_do_job_handle_doc,
+"Get the job handle for the running task. This should be used between\n"
+"repeated gearman_client_do() (and related) calls to get information.");
+
+
+static PyObject* pygear_client_do_status(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_do_status_doc,
+"Get the completion progress of a task.\n"
+"Returns a tuple (numerator, denominator)");
+
+
+static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_client_echo_doc,
+"Send a message to all servers to see if they echo it back. This is for\n"
+"testing the connection to the servers.\n\n"
+"@param[in] workload - Workload to ask the server to echo back.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
+
+
+static PyObject* pygear_client_errno(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_errno_doc,
+"Report on the last error code that the worker reported/stored.\n"
+"Use 'set_log_fn' if you are interested in recording all errors.\n\n"
+"@return integer.\n"
+"See gearman_errno() for details.");
+
+static PyObject* pygear_client_error(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_error_doc,
+"Report on the last errors that the worker reported/stored.\n"
+"Use 'set_log_fn' if you are interested in recording all errors.\n\n"
+"@return string.\n"
+"See gearman_error() for details.");
+
+
+static PyObject* pygear_client_error_code(pygear_ClientObject* self);
+PyDoc_STRVAR(pygear_client_error_code_doc,
+"See gearman_error_code() for details.");
+
 
 static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_execute_doc,
 "Run a task immediately and wait for the return.\n\n"
-"@param[in] function_name The name of the function to run.\n"
-"@param[in] workload The workload to pass to the function when it is run.\n"
-"@param[in] unique Optional unique job identifier, or None for a new UUID.\n"
-"@param[in] name Optional name for the gearman_argument_t.\n"
-"@return A tuple of return code, Task object. On failure the Task will be None.");
+"@param[in] function_name - The name of the function to run.\n"
+"@param[in] workload - The workload to pass to the function when it is run.\n"
+"@param[in] unique - Optional unique job identifier, or None for a new UUID.\n"
+"@param[in] name - Optional name for the gearman_argument_t.\n"
+"@return the result on success.\n"
+"@return NULL on failure.\n\n"
+"Note: This is an example of executing work using a combination of libgearman calls.\n"
+"See http://gearman.info/libgearman/gearman_execute.html");
+
+
+
 
 static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_set_options_doc,
@@ -260,18 +348,6 @@ PyDoc_STRVAR(pygear_client_set_timeout_doc,
 "A value of zero will tel the client to never time out.\n"
 "@param[in] timeout Duration to wait in milliseconds.");
 
-static PyObject* pygear_client_error(pygear_ClientObject* self);
-PyDoc_STRVAR(pygear_client_error_doc,
-"See gearman_error() for details.");
-
-static PyObject* pygear_client_error_code(pygear_ClientObject* self);
-PyDoc_STRVAR(pygear_client_error_code_doc,
-"See gearman_error() for details.");
-
-static PyObject* pygear_client_errno(pygear_ClientObject* self);
-PyDoc_STRVAR(pygear_client_errno_doc,
-"See gearman_errno() for details.");
-
 static PyObject* pygear_client_set_log_fn(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_set_log_fn_doc,
 "See gearman_set_log_fn() for details.");
@@ -279,16 +355,6 @@ PyDoc_STRVAR(pygear_client_set_log_fn_doc,
 static PyObject* pygear_client_remove_servers(pygear_ClientObject* self);
 PyDoc_STRVAR(pygear_client_remove_servers_doc,
 "Remove all servers currently associated with the client.");
-
-static PyObject* pygear_client_do_job_handle(pygear_ClientObject* self);
-PyDoc_STRVAR(pygear_client_do_job_handle_doc,
-"Get the job handle for the running task. This should be used between\n"
-"repeated gearman_client_do() (and related) calls to get information.\n");
-
-static PyObject* pygear_client_do_status(pygear_ClientObject* self);
-PyDoc_STRVAR(pygear_client_do_status_doc,
-"Get the completion progress of a task.\n"
-"Retyrns a tuple (numerator, denominator)");
 
 static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_job_status_doc,
@@ -308,14 +374,6 @@ PyDoc_STRVAR(pygear_client_unique_status_doc,
 "numerator Progress numerator.\n"
 "denominator Progress denominator.\n");
 
-static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_client_echo_doc,
-"Send data to all job servers to see if they echo it back. This is a test\n"
-"function to see if the job servers are responding properly.\n");
-
-static PyObject* pygear_client_clear_fn(pygear_ClientObject* self);
-PyDoc_STRVAR(pygear_client_clear_fn_doc,
-"Clear all task callback functions.");
 
 static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_client_set_serializer_doc,

@@ -38,7 +38,6 @@ PyObject* Worker_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     if (self != NULL) {
         self->g_Worker = NULL;
         self->g_FunctionMap = NULL;
-        self->g_LogFunctionMap = NULL;
     }
     return (PyObject *)self;
 }
@@ -50,7 +49,6 @@ int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
     worker_options = worker_options & (~GEARMAN_WORKER_GRAB_ALL);
     gearman_worker_set_options(self->g_Worker, worker_options);
     self->g_FunctionMap = PyDict_New();
-    self->g_LogFunctionMap = PyDict_New();
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL) {
         PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
@@ -66,10 +64,6 @@ int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary for functions.");
         return -1;
     }
-    if (self->g_LogFunctionMap == NULL) {
-        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary for logging function.");
-        return -1;
-    }
     return 0;
 }
 
@@ -79,7 +73,6 @@ void Worker_dealloc(pygear_WorkerObject* self) {
         self->g_Worker = NULL;
     }
     Py_XDECREF(self->g_FunctionMap);
-    Py_XDECREF(self->g_LogFunctionMap);
     Py_XDECREF(self->serializer);
     self->ob_type->tp_free((PyObject*)self);
 }

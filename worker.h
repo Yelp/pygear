@@ -43,9 +43,8 @@
 typedef struct {
     PyObject_HEAD
     struct gearman_worker_st* g_Worker;
-    PyObject* g_FunctionMap; // Dictionary for mapping function_name to function registerd by 'add_function' or 'register'
-    PyObject* g_LogFunctionMap; // Dictionary for mapping LogFunction to function set by 'set_log_fn'
-    PyObject* serializer; // Default as 'json'
+    PyObject* g_FunctionMap;
+    PyObject* serializer;
 } pygear_WorkerObject;
 
 
