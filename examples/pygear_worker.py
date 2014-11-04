@@ -16,6 +16,10 @@ def noop(job):
     return job.workload()['msg']
 
 
+def log_func(line):
+    print line
+
+
 def main():
     usage = "usage: %prog [options] arg"
     parser = OptionParser(usage)
@@ -36,15 +40,17 @@ def main():
     start_datetime = datetime.datetime.now()
     stop_time = time.time() + options.seconds
 
+    w.set_log_fn(log_func, pygear.PYGEAR_VERBOSE_INFO)
+
     while time.time() < stop_time:
         try:
-            w.set_timeout(1000)  # yield
-            w.work()
+            w.set_timeout(1000)
+            w.work()  # yield every second
         except pygear.TIMEOUT:
             print 'Server:%s:%r Since:%s %d seconds left.' \
                 % ('localhost', options.server_port, start_datetime, stop_time - time.time())
         except:
-            print sys.exec_info()[0]
+            print sys.exc_info()[0]
 
     print 'End working'
 

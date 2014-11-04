@@ -38,6 +38,7 @@ PyObject* Worker_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     if (self != NULL) {
         self->g_Worker = NULL;
         self->g_FunctionMap = NULL;
+        self->g_LogFunctionMap = NULL;
     }
     return (PyObject *)self;
 }
@@ -49,6 +50,7 @@ int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
     worker_options = worker_options & (~GEARMAN_WORKER_GRAB_ALL);
     gearman_worker_set_options(self->g_Worker, worker_options);
     self->g_FunctionMap = PyDict_New();
+    self->g_LogFunctionMap = PyDict_New();
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL) {
         PyObject* err_string = PyString_FromFormat("Failed to import '%s'", PYTHON_SERIALIZER);
@@ -57,11 +59,15 @@ int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
         return -1;
     }
     if (self->g_Worker == NULL) {
-        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman worker structure");
+        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal gearman worker structure.");
         return -1;
     }
     if (self->g_FunctionMap == NULL) {
-        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary");
+        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary for functions.");
+        return -1;
+    }
+    if (self->g_LogFunctionMap == NULL) {
+        PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary for logging function.");
         return -1;
     }
     return 0;
@@ -73,6 +79,7 @@ void Worker_dealloc(pygear_WorkerObject* self) {
         self->g_Worker = NULL;
     }
     Py_XDECREF(self->g_FunctionMap);
+    Py_XDECREF(self->g_LogFunctionMap);
     Py_XDECREF(self->serializer);
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -349,12 +356,14 @@ static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObjec
 }
 
 
-/* private method */
+// private method
+// :c:type:gearman_log_fn is defined as:
+// void (gearman_log_fn)(const char* line, gearman_verbose_t verbose, void* context)
 static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context) {
     PyGILState_STATE gstate = PyGILState_Ensure();
-    PyObject* python_cb_method = (PyObject*) context;
+    PyObject* python_function = (PyObject*) context;
     PyObject* python_line = PyString_FromString(line);
-    PyObject* callback_return = PyObject_CallFunction(python_cb_method, "O", python_line);
+    PyObject* callback_return = PyObject_CallFunction(python_function, "O", python_line);
     if (!callback_return) {
         if (PyErr_Occurred()) {
             PyErr_Print();
@@ -367,14 +376,14 @@ static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t ve
 
 
 static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args) {
-    PyObject* logging_cb;
-    int log_level;
-    if (!PyArg_ParseTuple(args, "Oi", &logging_cb, &log_level)) {
+    PyObject* function;
+    int verbose;
+    if (!PyArg_ParseTuple(args, "Oi", &function, &verbose)) {
         return NULL;
     }
-    Py_INCREF(logging_cb);
-    gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, logging_cb, log_level);
-    Py_DECREF(logging_cb);
+    Py_INCREF(function);
+    gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, function, verbose);
+    Py_DECREF(function);
     Py_RETURN_NONE;
 }
 

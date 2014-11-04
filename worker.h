@@ -43,23 +43,28 @@
 typedef struct {
     PyObject_HEAD
     struct gearman_worker_st* g_Worker;
-    PyObject* g_FunctionMap;
-    PyObject* serializer;
+    PyObject* g_FunctionMap; // Dictionary for mapping function_name to function registerd by 'add_function' or 'register'
+    PyObject* g_LogFunctionMap; // Dictionary for mapping LogFunction to function set by 'set_log_fn'
+    PyObject* serializer; // Default as 'json'
 } pygear_WorkerObject;
+
 
 PyDoc_STRVAR(worker_module_docstring, 
 "Represents a Gearman worker.\n"
 "Pygear wraps libgearman C/C++ client library with minimal modifications.\n"
 "See http://gearman.info/libgearman/ for details.");
 
+
 /* Class init methods */
 PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds);
 void Worker_dealloc(pygear_WorkerObject* self);
 
+
 /* Private methods */
 void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     size_t* result_size, gearman_return_t* ret_ptr);
+
 
 /* Method definitions */
 static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject* args);
@@ -202,14 +207,18 @@ PyDoc_STRVAR(pygear_worker_set_identifier_doc,
 
 static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_log_fn_doc,
-"Set logging function for this worker.\n\n"
+"Set logging function for this worker. The logging function will be executed\n"
+"whenever an error occurs. An error message string will be passed in as the parameter.\n\n"
 "@param[in] function - Function to call when there is a logging message.\n"
-"@param[in] context - Arguments to pass into the callback function.\n"
 "@param[in] verbose - Verbosity level threshold. Only call function\n"
 "\twhen the logging message is equal to or less verbose than this.\n"
 "\tMust be one of the pygear.PYGEAR_VERBOSE_* constants.\n\n"
 "@return None on success.\n"
-"@return NULL on failure.");
+"@return NULL on failure.\n\n"
+"Example:\n"
+"def log_func(line):\n"
+"    print line\n\n"
+"w.set_log_fn(log_func, pygear.PYGEAR_VERBOSE_INFO)");
 
 
 static PyObject* pygear_worker_set_namespace(pygear_WorkerObject* self, PyObject* args);
