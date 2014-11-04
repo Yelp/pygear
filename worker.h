@@ -45,25 +45,22 @@ typedef struct {
     struct gearman_worker_st* g_Worker;
     PyObject* g_FunctionMap;
     PyObject* serializer;
+    PyObject* cb_log;
 } pygear_WorkerObject;
-
 
 PyDoc_STRVAR(worker_module_docstring, 
 "Represents a Gearman worker.\n"
 "Pygear wraps libgearman C/C++ client library with minimal modifications.\n"
 "See http://gearman.info/libgearman/ for details.");
 
-
 /* Class init methods */
 PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds);
 void Worker_dealloc(pygear_WorkerObject* self);
 
-
 /* Private methods */
 void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
     size_t* result_size, gearman_return_t* ret_ptr);
-
 
 /* Method definitions */
 static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject* args);
@@ -81,7 +78,6 @@ PyDoc_STRVAR(pygear_worker_add_function_doc,
 "    return job.workload()[::-1]\n\n"
 "w.add_function('reverse', 1, reverse)  # 1 second timeout");
 
-
 static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_add_server_doc,
 "Add a job server to a worker. This goes into a list of servers that can be\n"
@@ -90,7 +86,6 @@ PyDoc_STRVAR(pygear_worker_add_server_doc,
 "@param[in] port - Port of the server to add.\n\n"
 "@return None on success.\n"
 "@return NULL and raises pygear exception on failure.");
-
 
 static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_add_servers_doc,
@@ -104,12 +99,10 @@ PyDoc_STRVAR(pygear_worker_add_servers_doc,
 "servers_list = ['localhost234', 'jobserver2.domain.com:7003', '10.0.0.3']\n"
 "w.add_servers(servers_list)");
 
-
 static PyObject* pygear_worker_clone(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_clone_doc,
 "Clone a pygear worker.\n\n"
 "@return new Worker instance.");
-
 
 static PyObject* pygear_worker_echo(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_echo_doc,
@@ -119,20 +112,17 @@ PyDoc_STRVAR(pygear_worker_echo_doc,
 "@return None on success.\n"
 "@return NULL and raises pygear exception on failure.");
 
-
 static PyObject* pygear_worker_errno(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_errno_doc,
 "Report on the last error code that the worker reported/stored.\n"
 "Use 'set_log_fn' if you are interested in recording all errors.\n\n"
 "@return integer.");
 
-
 static PyObject* pygear_worker_error(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_error_doc,
 "Report on the last errors that the worker reported/stored.\n"
 "Use 'set_log_fn' if you are interested in recording all errors.\n\n"
 "@return string.");
-
 
 static PyObject* pygear_worker_function_exists(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_function_exists_doc,
@@ -141,12 +131,10 @@ PyDoc_STRVAR(pygear_worker_function_exists_doc,
 "@param[in] function_name - Function name for search.\n\n"
 "@return bool.");
 
-
 static PyObject* pygear_worker_get_options(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_get_options_doc,
 "Get options for a worker.\n\n"
 "@return dictionary of options currently set on the worker.");
-
 
 static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_grab_job_doc,
@@ -157,17 +145,14 @@ PyDoc_STRVAR(pygear_worker_grab_job_doc,
 "@return new Job object on success.\n"
 "@return NULL on failure.");
 
-
 static PyObject* pygear_worker_id(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_id_doc,
 "Get the ID of the worker.\n\n"
 "@return integer.");
 
-
 static PyObject* pygear_worker_job_free_all(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_job_free_all_doc,
 "Free all jobs for this worker.");
-
 
 static PyObject* pygear_worker_namespace(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_namespace_doc,
@@ -176,7 +161,6 @@ PyDoc_STRVAR(pygear_worker_namespace_doc,
 "'set_namespace' to set a namespace.\n\n"
 "@return string.\n"
 "@return None if no namespace has been set.");
-
 
 static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_register_doc,
@@ -189,20 +173,16 @@ PyDoc_STRVAR(pygear_worker_register_doc,
 "@return None on success.\n"
 "@return NULL and raises pygear exception on failure.");
 
-
 static PyObject* pygear_worker_remove_servers(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_remove_servers_doc,
 "Remove all servers currently associated with the worker.");
-
 
 static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_identifier_doc,
 "Set the identifier that the server uses to identify the worker.\n\n"
 "@param[in] identifier - New identifier string for the worker.\n\n"
 "@return None on success.\n"
-"@return NULL on failure."
-);
-
+"@return NULL on failure.");
 
 static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_log_fn_doc,
@@ -219,7 +199,6 @@ PyDoc_STRVAR(pygear_worker_set_log_fn_doc,
 "    print line\n\n"
 "w.set_log_fn(log_func, pygear.PYGEAR_VERBOSE_INFO)");
 
-
 static PyObject* pygear_worker_set_namespace(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_namespace_doc,
 "Set a namespace for this worker. Only clients and workers sharing a same\n"
@@ -228,12 +207,10 @@ PyDoc_STRVAR(pygear_worker_set_namespace_doc,
 "@return None on success.\n"
 "@return NULL on failure.");
 
-
 static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_worker_set_options_doc,
 "Set options for a worker.\n\n"
 "@param[in] options - Dictionary of options to set on the worker.");
-
 
 static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_serializer_doc,
@@ -245,25 +222,21 @@ PyDoc_STRVAR(pygear_worker_set_serializer_doc,
 "must take a string.\n\n"
 "@param[in] serializer - Object implementing dumps and loads.");
 
-
 static PyObject* pygear_worker_set_timeout(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_timeout_doc,
 "Set the current timeout value, in milliseconds, for the worker.\n\n"
 "@param[in] timeout - Timeout in milliseconds.");
-
 
 static PyObject* pygear_worker_timeout(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_timeout_doc,
 "Get the current timeout value, in milliseconds, for the worker.\n\n"
 "@return integer.");
 
-
 static PyObject* pygear_worker_wait(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_wait_doc,
 "When in non-blocking I/O mode, wait for activity from one of the servers.\n\n"
 "@return None on success.\n"
 "@return NULL and raises pygear exception on failure.");
-
 
 static PyObject* pygear_worker_work(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_work_doc,
@@ -272,14 +245,12 @@ PyDoc_STRVAR(pygear_worker_work_doc,
 "from the python interpreter. Call 'set_timeout' beforehand to avoid this.\n\n"
 "@raises pygear exception on failure.\n");
 
-
 static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_unregister_doc,
 "Unregister a function with job servers.\n\n"
 "@param[in] function_name - Function name to unregister.\n\n"
 "@return None on success.\n"
 "@return NULL and raises pygear exception on failure.");
-
 
 static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_unregister_all_doc,

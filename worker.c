@@ -64,6 +64,7 @@ int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
         PyErr_SetString(PyGearExn_ERROR, "Failed to create internal dictionary for functions.");
         return -1;
     }
+    self->cb_log = NULL;
     return 0;
 }
 
@@ -74,6 +75,7 @@ void Worker_dealloc(pygear_WorkerObject* self) {
     }
     Py_XDECREF(self->g_FunctionMap);
     Py_XDECREF(self->serializer);
+    Py_XDECREF(self->cb_log);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -353,29 +355,24 @@ static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObjec
 // :c:type:gearman_log_fn is defined as:
 // void (gearman_log_fn)(const char* line, gearman_verbose_t verbose, void* context)
 static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t verbose, void* context) {
+    pygear_WorkerObject* worker = (pygear_WorkerObject*) context;
     PyGILState_STATE gstate = PyGILState_Ensure();
-    PyObject* python_function = (PyObject*) context;
-    PyObject* python_line = PyString_FromString(line);
-    PyObject* callback_return = PyObject_CallFunction(python_function, "O", python_line);
-    if (!callback_return) {
-        if (PyErr_Occurred()) {
-            PyErr_Print();
-        }
-    }
-    Py_XDECREF(python_line);
-    Py_XDECREF(callback_return);
+    PyObject* result = PyObject_CallFunction(worker->cb_log, "s", line);
+    Py_XDECREF(result);
     PyGILState_Release(gstate);
 }
 
 
 static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args) {
     PyObject* function;
-    int verbose;
+    gearman_verbose_t verbose;
     if (!PyArg_ParseTuple(args, "Oi", &function, &verbose)) {
         return NULL;
     }
     Py_INCREF(function);
-    gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, function, verbose);
+    Py_XDECREF(self->cb_log);
+    self->cb_log = function;
+    gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, self, verbose);
     Py_DECREF(function);
     Py_RETURN_NONE;
 }

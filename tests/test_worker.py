@@ -1,6 +1,10 @@
 import pytest
 import pygear
-from . import TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT
+
+from . import TEST_GEARMAN_SERVER
+from . import TEST_GEARMAN_PORT
+from . import echo_function
+from . import noop_serializer
 
 
 @pytest.fixture
@@ -8,19 +12,10 @@ def w():
     return pygear.Worker()
 
 
-def noop_function(job):
-    return job
-
-
-def reverse_function(job):
-    workload = job.workload()
-    job.send_complete(workload[::-1])
-
-
 def test_worker_add_function_and_function_exists(w):
-    assert not w.function_exists("noop_function")
-    w.add_function("noop_function", 10, noop_function)
-    assert w.function_exists("noop_function")
+    assert not w.function_exists("echo_function")
+    w.add_function("echo_function", 10, echo_function)
+    assert w.function_exists("echo_function")
 
 
 def test_worker_add_server(w):
@@ -43,7 +38,6 @@ def test_worker_clone(w):
 
 
 def test_worker_echo(w):
-    # test_integration.py
     pass
 
 
@@ -104,17 +98,9 @@ def test_work_no_functions(w):
         w.work()
 
 
-class noop_serializer(object):
-    def loads(self, s):
-        return s
-
-    def dumps(self, s):
-        return s
-
-
 def test_set_serializer(w):
-    w.set_serializer(noop_serializer())
-    with pytest.raises(AttributeError):
+    w.set_serializer(noop_serializer())  # valid
+    with pytest.raises(AttributeError):  # invalid
         w.set_serializer("a string doesn't implement loads.")
 
 
@@ -125,7 +111,7 @@ def test_worker_set_timeout(w):
 
 
 def test_work_timeout(w):
-    w.add_function("test_method", 60, reverse_function)
+    w.add_function("test_method", 60, echo_function)
     w.add_server(TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT)
     w.set_timeout(30)
     with pytest.raises(pygear.TIMEOUT):
