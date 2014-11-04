@@ -41,7 +41,9 @@
 #include "admin.c"
 
 PyDoc_STRVAR(pygear_class_docstring,
-"PyGear is a python wrapper for the libgearman C library");
+"PyGear is a python wrapper for the libgearman C/C++ library with minimal modifications.\n"
+"See http://gearman.info/libgearman/ for libgearman details.");
+
 
 /* Method definitions */
 static PyObject* pygear_describe_returncode(void* self, PyObject* args);

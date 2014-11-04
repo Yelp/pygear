@@ -48,10 +48,7 @@ typedef struct {
     PyObject* cb_log;
 } pygear_WorkerObject;
 
-PyDoc_STRVAR(worker_module_docstring, 
-"Represents a Gearman worker.\n"
-"Pygear wraps libgearman C/C++ client library with minimal modifications.\n"
-"See http://gearman.info/libgearman/ for details.");
+PyDoc_STRVAR(worker_module_docstring, "Represents a Gearman worker.");
 
 /* Class init methods */
 PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
