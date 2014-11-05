@@ -28,7 +28,6 @@
 
 #include "admin.h"
 
-#define SOCKET_BUFSIZE 4096
 
 /*
  * Class constructor / destructor methods
@@ -76,17 +75,23 @@ void Admin_dealloc(pygear_AdminObject* self) {
 
 /*
  * Verify that the connection to the gearman server exists and is open.
- * If the socket is extant and connected, return a pointer to the PyObject.
- * If there is an error connecting, set an error and return NULL
+ * On success, return a nonnegative integer, the socket file descriptor.
+ * On failure, return -1 and errno is set to indicate the error.
  */
-static int _pygear_admin_check_connection(pygear_AdminObject* self) {
+static int _pygear_admin_check_server_connection(pygear_AdminObject* self) {
     if (self->sockfd < 0) {
         self->sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        // socket() - creates an unbound socket in a communication domain, and returns a file descriptor
+        // AF_INET - Internet domain sockets domain
+        // SOCK_STREAM - Byte-stream socket type
+        // 0 - Use an unspecified default protocol
         if (self->sockfd < 0) {
             PyErr_SetString(PyGearExn_ERROR, "Failed to open socket");
             return -1;
         }
         struct hostent* server = gethostbyname(self->host);
+        // struct hostent - represent an entry in the hosts database, with the following members:
+        // char *h_name, char **h_aliases, int h_addrtype, int h_length, char **h_addr_list, char *h_addr
         if (server == NULL) {
             PyObject* err_string = PyString_FromFormat("Failed to connect: No such host: %s", self->host);
             PyErr_SetObject(PyGearExn_ERROR, err_string);
@@ -95,15 +100,21 @@ static int _pygear_admin_check_connection(pygear_AdminObject* self) {
             self->sockfd = -1;
             return self->sockfd;
         }
-        struct sockaddr_in serv_addr;
-        memset((char *) &serv_addr, 0, sizeof(serv_addr));
-        serv_addr.sin_family = AF_INET;
-        memcpy((char *)&serv_addr.sin_addr.s_addr, (char *)server->h_addr, server->h_length);
-        serv_addr.sin_port = htons(self->port);
-        struct timeval tv;
+        struct sockaddr_in server_addr;
+        // struct sockaddr_in - for handling internet addresses, with the following members:
+        // short sin_family, unsigned short sin_port, struct in_addr sin_addr, char sin_zero[8]
+        memset((char *) &server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        memcpy((char *) &server_addr.sin_addr.s_addr, (char *)server->h_addr, server->h_length);
+        server_addr.sin_port = htons(self->port);
+        // htons() - converts unsigned short integer hostshort from host byte order to network byte order
+        struct timeval tv; // elapsed time
         tv.tv_sec = self->timeout;
         tv.tv_usec = 0;
-        if (setsockopt(self->sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval)) == -1) {
+        if (setsockopt(self->sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) == -1) {
+            // setsockopt() - set the socket options
+            // SOL_SOCKET - set options at the socket level
+            // SO_RCVTIMEO - sets the timeout value an input function waits until it completes
             PyObject* err_string = PyString_FromFormat("Failed to set timeout: Socket error %s", strerror(errno));
             PyErr_SetObject(PyGearExn_ERROR, err_string);
             Py_XDECREF(err_string);
@@ -111,7 +122,8 @@ static int _pygear_admin_check_connection(pygear_AdminObject* self) {
             self->sockfd = -1;
             return self->sockfd;
         }
-        if (connect(self->sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
+        if (connect(self->sockfd,(struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
+            // connect() - initiate a connection on a socket, return 0 on success
             PyObject* err_string = PyString_FromFormat("Failed to connect: Socket error %s", strerror(errno));
             PyErr_SetObject(PyGearExn_ERROR, err_string);
             Py_XDECREF(err_string);
@@ -123,14 +135,13 @@ static int _pygear_admin_check_connection(pygear_AdminObject* self) {
     return self->sockfd;
 }
 
+
 /*
  * Parse single-line responses that are formatted "OK [result]"
- * Return 1 on success, 0 on failure
- * On success, puts a pointer to the list of string elements after OK in
- * the pointer *result
- * On fail, *result is set to NULL
+ * On success, put a pointer to the list of string elements after OK in *result
+ * On failure, set *result to NULL
  */
-static int _pygear_extract_response(PyObject* result_string, PyObject** result) {
+static bool _pygear_extract_response_success(PyObject* result_string, PyObject** result) {
     PyObject* stripped_result = NULL;
     PyObject* split_result = NULL;
     PyObject* ok_string = NULL;
@@ -152,41 +163,40 @@ static int _pygear_extract_response(PyObject* result_string, PyObject** result) 
     if (cmp_result == 1) {
         *result = PyList_GetSlice(split_result, 1, PyList_Size(split_result)); // new ref
     }
-
 catch:
     Py_XDECREF(stripped_result);
     Py_XDECREF(split_result);
     Py_XDECREF(ok_string);
     if (*result == NULL) {
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
+
 /*
- *  Verifies that the gearman server's response was prepended with "OK".
- *  Returns 0 on failure, 1 on success.
+ * Verifies that the gearman server's response was prepended with "OK".
  */
-static int _pygear_admin_response_ok(PyObject* response_str) {
+static bool _pygear_admin_response_with_ok(PyObject* response_str) {
     if (response_str == NULL || response_str == Py_None) {
-        return 0;
+        return false;
     }
     char* resp = PyString_AsString(response_str);
     if (resp == NULL) {
-        return 0;
+        return false;
     }
     if (strncmp(resp, "OK", 2) == 0) {
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
+
 
 /*
  * Verifies that parsed_result is a list of size one.
- * If this is not the case, raise an appropriate exception
- * Returns 0 on failure, 1 on success
+ * Raise an appropriate exception on failure.
  */
-static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* parsed_result) {
+static bool _pygear_admin_check_list_size_is_one_and_raise(PyObject* raw_result, PyObject* parsed_result) {
     PyTypeObject* ret_type = NULL;
     bool success = false;
     if (!PyList_Check(parsed_result)) {
@@ -208,23 +218,19 @@ static int _pygear_admin_check_list_and_raise(PyObject* raw_result, PyObject* pa
         goto catch;
     }
     success = true;
-
 catch:
     Py_XDECREF(ret_type);
-    if (success) {
-        return 1;
-    }
-    return 0;
+    return success;
 }
 
+
 /*
- * Called when _pygear_extract_response fails.
+ * Called when _pygear_extract_response_success fails.
  * Sets the appropriate Python excecption, nothing more.
  */
 void _pygear_admin_raise_exception(PyObject* raw_result) {
     char* raw_result_string;
     if (raw_result == NULL) {
-        // There was a socket exception
         PyErr_SetString(PyGearExn_COULD_NOT_CONNECT, "Connection Failed: socket error communicating with the host");
         return;
     }
@@ -242,45 +248,52 @@ void _pygear_admin_raise_exception(PyObject* raw_result) {
     }
 }
 
+
 /*
  * Check if the server responded with ERR ...
- * If so, set an exception and reurn 1.
- * Return 0 if no error.
+ * If so, set an exception and return true.
  */
-int _check_and_raise_server_error(PyObject* response_string) {
+static bool _check_and_raise_server_error(PyObject* response_string) {
     char* resp = PyString_AsString(response_string);
     if (resp == NULL) {
-        return 1;
+        return true;
     }
     if (!strncmp(resp, "ERR", 3)) {
         PyErr_SetString(PyGearExn_ERROR, resp);
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
-static int string_endswith(const char* haystack, const char* needle) {
+
+static bool string_endswith(const char* haystack, const char* needle) {
     size_t haystack_len, needle_len;
     haystack_len = strlen(haystack);
     needle_len = strlen(needle);
     if (haystack_len < needle_len) {
-        return 0;
+        return false;
     }
     if (strncmp(&(haystack[haystack_len - needle_len]), needle, needle_len) == 0) {
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
+
 static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command, char* eom_mark) {
-    if (_pygear_admin_check_connection(self) < 0) {
+    if (_pygear_admin_check_server_connection(self) < 0) {
         return NULL;
     }
     size_t bytes_written = write(self->sockfd, command, strlen(command));
+    // write() - write to a file descriptor
+    // return number of bytes written on success, return -1 and set errno on failure
     if (bytes_written < 0) {
         return NULL;
     }
     PyObject* ret = NULL;
+
+#define SOCKET_BUFSIZE 4096  // read 4K each time
+
     char* result = malloc(sizeof(char) * SOCKET_BUFSIZE);
     char buf[SOCKET_BUFSIZE];
     size_t result_bytes = 0;
@@ -288,8 +301,9 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
     do {
         errno = 0;
         bytes_read = read(self->sockfd, buf, SOCKET_BUFSIZE);
+        // read() - read data on a socket
         int read_err = errno;
-        if (read_err == EAGAIN) {
+        if (read_err == EAGAIN) { // EAGAIN - there is no data available right now
             break;
         }
         if (bytes_read < 0) {
@@ -298,6 +312,7 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
             Py_XDECREF(err_string);
             goto catch;
         }
+        // append buf to result
         result = realloc(result, sizeof(char) * (result_bytes + bytes_read + 1));
         strncpy(&(result[result_bytes]), buf, bytes_read);
         result_bytes += bytes_read;
@@ -333,7 +348,7 @@ static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* arg
     if (buffer != NULL) {
         free(buffer);
     }
-    if (!_pygear_admin_response_ok(raw_result)) {
+    if (!_pygear_admin_response_with_ok(raw_result)) {
         _pygear_admin_raise_exception(raw_result);
         Py_XDECREF(raw_result);
         return NULL;
@@ -369,7 +384,7 @@ static PyObject* pygear_admin_create_function(pygear_AdminObject* self, PyObject
     if (command_buffer != NULL) {
         free(command_buffer);
     }
-    if (!_pygear_admin_response_ok(raw_result)) {
+    if (!_pygear_admin_response_with_ok(raw_result)) {
         _pygear_admin_raise_exception(raw_result);
         Py_XDECREF(raw_result);
         return NULL;
@@ -392,7 +407,7 @@ static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* 
     if (command_buffer != NULL) {
         free(command_buffer);
     }
-    if (!_pygear_admin_response_ok(raw_result)){
+    if (!_pygear_admin_response_with_ok(raw_result)){
         _pygear_admin_raise_exception(raw_result);
         Py_XDECREF(raw_result);
         return NULL;
@@ -408,11 +423,11 @@ static PyObject* pygear_admin_getpid(pygear_AdminObject* self) {
     PyObject* pid_str = NULL;
     bool success = false;
     raw_result = _pygear_admin_make_call(self, "getpid\r\n", "\n");
-    if (!_pygear_extract_response(raw_result, &parsed_result)) {
+    if (!_pygear_extract_response_success(raw_result, &parsed_result)) {
         _pygear_admin_raise_exception(raw_result);
         goto catch;
     }
-    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)) {
+    if (!_pygear_admin_check_list_size_is_one_and_raise(raw_result, parsed_result)) {
         goto catch;
     }
     success = true;
@@ -441,7 +456,7 @@ static PyObject* pygear_admin_maxqueue(pygear_AdminObject* self, PyObject* args)
     command_buffer = malloc(sizeof(char) * (queue_name_len + strlen(format_string) + 32));
     sprintf(command_buffer, format_string, queue_name, queue_size);
     raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
-    if (!_pygear_admin_response_ok(raw_result)) {
+    if (!_pygear_admin_response_with_ok(raw_result)) {
         _pygear_admin_raise_exception(raw_result);
         goto catch;
     }
@@ -479,7 +494,7 @@ static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* arg
 /*
  * Set the socket timeout (in seconds).
  * To take effect we need to recreate the socket, so clear it here.
- * It will be recreated with the new timeout next time _check_connection
+ * It will be recreated with the new timeout next time _check_server_connection
  * is called.
  */
 static PyObject* pygear_admin_set_timeout(pygear_AdminObject* self, PyObject* args) {
@@ -665,7 +680,7 @@ static PyObject* pygear_admin_shutdown(pygear_AdminObject* self, PyObject* args)
     } else {
          raw_result = _pygear_admin_make_call(self, "shutdown graceful\r\n", "\n");
     }
-    if (!_pygear_admin_response_ok(raw_result)) {
+    if (!_pygear_admin_response_with_ok(raw_result)) {
         _pygear_admin_raise_exception(raw_result);
         Py_XDECREF(raw_result);
         return NULL;
@@ -808,11 +823,11 @@ static PyObject* pygear_admin_verbose(pygear_AdminObject* self) {
     PyObject* parsed_result = NULL;
     PyObject* ret = NULL;
     raw_result = _pygear_admin_make_call(self, "verbose\r\n", "\n");
-    if (!_pygear_extract_response(raw_result, &parsed_result)) {
+    if (!_pygear_extract_response_success(raw_result, &parsed_result)) {
         _pygear_admin_raise_exception(raw_result);
         goto catch;
     }
-    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)) {
+    if (!_pygear_admin_check_list_size_is_one_and_raise(raw_result, parsed_result)) {
         goto catch;
     }
     ret = PyList_GetItem(parsed_result, 0);
@@ -827,11 +842,11 @@ static PyObject* pygear_admin_version(pygear_AdminObject* self) {
     PyObject* raw_result = _pygear_admin_make_call(self, "version\r\n", "\n");
     PyObject* parsed_result = NULL;
     PyObject* ret = NULL;
-    if (!_pygear_extract_response(raw_result, &parsed_result)) { // parsed_result will be assigned a new ref
+    if (!_pygear_extract_response_success(raw_result, &parsed_result)) { // parsed_result will be assigned a new ref
         _pygear_admin_raise_exception(raw_result);
         goto catch;
     }
-    if (!_pygear_admin_check_list_and_raise(raw_result, parsed_result)) {
+    if (!_pygear_admin_check_list_size_is_one_and_raise(raw_result, parsed_result)) {
         goto catch;
     }
     ret = PyList_GetItem(parsed_result, 0);
