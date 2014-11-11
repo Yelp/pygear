@@ -1,53 +1,32 @@
 import datetime
 import time
 import sys
-from optparse import OptionParser
 
 import pygear
 
-
-def reverse(job):
-    print '[Pygear Worker] Reverse: ' + job.workload()['msg']
-    return job.workload()["msg"][::-1]
-
-
-def noop(job):
-    print '[Pygear Worker] No-op' + job.workload()['msg']
-    return job.workload()['msg']
+from util import parse_options_and_args
+from util import reverse
+from util import echo
+from util import logging
 
 
-def log_func(line):
-    print line
-
-
-def parse_options_and_args():
-    usage = 'usage: %prog [options] arg'
-    parser = OptionParser(usage)
-    parser.add_option('-s', '--seconds', type='int', dest='seconds', default=10,
-        help='set the seconds this worker will run (default 10)')
-    parser.add_option('-p', '--port', type='int', dest='server_port', default=4730,
-        help='set server port (default 4730)')
-    parser.add_option('-H', '--host', dest='server_host', default='localhost',
-        help='set server host (default \'localhost\')')
-    parser.add_option('-l', '--logging', action='store_true', dest='logging', default=False,
-        help='turn on set_log_fn to print the exception lines')
-    return parser.parse_args()
+FUNCTION_TIMEOUT = 0
 
 
 def main():
-    [opt, args] = parse_options_and_args()
+    [opt, args] = parse_options_and_args('worker')
 
     w = pygear.Worker()
     w.add_server(opt.server_host, opt.server_port)
-    w.add_function('reverse', 0, reverse)
-    w.add_function('noop', 0, noop)
+    w.add_function('reverse', FUNCTION_TIMEOUT, reverse)
+    w.add_function('echo', FUNCTION_TIMEOUT, echo)
 
     print pygear.__file__
     start_datetime = datetime.datetime.now()
     stop_time = time.time() + opt.seconds
 
     if opt.logging:
-        w.set_log_fn(log_func, pygear.PYGEAR_VERBOSE_INFO)
+        w.set_log_fn(logging, pygear.PYGEAR_VERBOSE_INFO)
 
     while time.time() < stop_time:
         try:

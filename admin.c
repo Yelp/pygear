@@ -253,7 +253,7 @@ void _pygear_admin_raise_exception(PyObject* raw_result) {
  * Check if the server responded with ERR ...
  * If so, set an exception and return true.
  */
-static bool _check_and_raise_server_error(PyObject* response_string) {
+static bool _check_if_server_raises_error(PyObject* response_string) {
     char* resp = PyString_AsString(response_string);
     if (resp == NULL) {
         return true;
@@ -531,7 +531,7 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
     if (!raw_result) {
         goto catch;
     }
-    if (_check_and_raise_server_error(raw_result)) {
+    if (_check_if_server_raises_error(raw_result)) {
         goto catch;
     }
     status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
@@ -648,7 +648,7 @@ static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self) {
     if (!raw_result) {
         goto catch;
     }
-    if (_check_and_raise_server_error(raw_result)) {
+    if (_check_if_server_raises_error(raw_result)) {
         goto catch;
     }
     status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
@@ -711,7 +711,7 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
     if (!raw_result) {
         goto catch;
     }
-    if (_check_and_raise_server_error(raw_result)) {
+    if (_check_if_server_raises_error(raw_result)) {
         goto catch;
     }
     status_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
@@ -876,7 +876,7 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
     if (!raw_result) {
         goto catch;
     }
-    if (_check_and_raise_server_error(raw_result)) {
+    if (_check_if_server_raises_error(raw_result)) {
         goto catch;
     }
     worker_string = PyObject_CallMethod(raw_result, "replace", "ss", ".\n", " ");
