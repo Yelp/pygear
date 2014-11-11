@@ -4,7 +4,8 @@ import pytest
 import pygear
 import sys
 
-from . import TEST_GEARMAN_SERVERS
+from . import TEST_SERVER_HOST
+from . import TEST_SERVER_PORT
 from . import TEST_TIMEOUT_MSEC
 from . import cat_serializer
 
@@ -16,7 +17,7 @@ class TestError(Exception):
 @pytest.fixture
 def c():
     client = pygear.Client()
-    client.add_servers(TEST_GEARMAN_SERVERS)
+    client.add_server(TEST_SERVER_HOST, TEST_SERVER_PORT)
     client.set_timeout(TEST_TIMEOUT_MSEC)
     return client
 
@@ -24,7 +25,7 @@ def c():
 @pytest.fixture
 def w():
     worker = pygear.Worker()
-    worker.add_servers(TEST_GEARMAN_SERVERS)
+    worker.add_server(TEST_SERVER_HOST, TEST_SERVER_PORT)
     worker.set_timeout(TEST_TIMEOUT_MSEC)
     return worker
 

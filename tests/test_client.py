@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 import pygear
 
@@ -23,10 +25,11 @@ def test_client_add_servers(c):
 
 
 def test_client_add_task(c):
-    # add task without server
-    with pytest.raises(pygear.NO_SERVERS):
-        c.add_task("reverse", "Jackdaws love my big sphynx of quartz")
-        c.run_tasks()
+    unique = uuid.uuid4().hex
+    t = c.add_task('reverse', 'A string to be reversed', unique)
+    assert type(t) == pygear.Task
+#    assert t.function_name() == 'reverse'
+#    assert t.unique() == unique
 
 
 def test_client_add_task_background(c):
@@ -118,11 +121,18 @@ def test_client_job_status(c):
 
 
 def test_client_remove_servers(c):
-    pass
+    c.add_server('localhost', 4730)
+    c.remove_servers()
+    c.add_task("reverse", "Jackdaws love my big sphynx of quartz")
+    with pytest.raises(pygear.NO_SERVERS):
+        c.run_tasks()
 
 
 def test_client_run_tasks(c):
-    pass
+    # add task without server
+    c.add_task("reverse", "Jackdaws love my big sphynx of quartz")
+    with pytest.raises(pygear.NO_SERVERS):
+        c.run_tasks()
 
 
 def test_client_set_complete_fn(c):

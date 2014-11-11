@@ -82,9 +82,13 @@ static PyObject* pygear_task_denominator(pygear_TaskObject* self);
 PyDoc_STRVAR(pygear_task_denominator_doc,
 "Get the denominator of percentage complete for a task.");
 
+static PyObject* pygear_task_error(pygear_TaskObject* self);
+PyDoc_STRVAR(pygear_task_error_doc,
+"Get the last error message encountered for a task.");
+
 static PyObject* pygear_task_returncode(pygear_TaskObject* self);
 PyDoc_STRVAR(pygear_task_returncode_doc,
-"Get the return code for a task.");
+"Get the last return code stored for a task.");
 
 static PyObject* pygear_task_strstate(pygear_TaskObject* self);
 PyDoc_STRVAR(pygear_task_strstate_doc,
@@ -101,7 +105,7 @@ PyDoc_STRVAR(pygear_task_data_size_doc,
 static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_task_set_serializer_doc,
 "Specify the object to be used to serialize data passed through gearman.\n"
-"By default, pygear will use pickle or cPickle to convert data to a string\n"
+"By default, pygear will use 'json' to convert data to a string\n"
 "representation during transit and reconstitute it on the other end.\n"
 "You can replace the serializer with your own as long as it implements\n"
 "the 'dumps' and 'loads' methods. 'dumps' must return a string, and loads\n"
@@ -117,6 +121,7 @@ static PyMethodDef task_module_methods[] = {
     _TASKMETHOD(is_running, METH_NOARGS)
     _TASKMETHOD(numerator, METH_NOARGS)
     _TASKMETHOD(denominator, METH_NOARGS)
+    _TASKMETHOD(error, METH_NOARGS)
     _TASKMETHOD(returncode, METH_NOARGS)
     _TASKMETHOD(strstate, METH_NOARGS)
     _TASKMETHOD(result, METH_NOARGS)

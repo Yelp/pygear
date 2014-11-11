@@ -1,8 +1,8 @@
 import pytest
 import pygear
 
-from . import TEST_GEARMAN_SERVER
-from . import TEST_GEARMAN_PORT
+from . import TEST_SERVER_HOST
+from . import TEST_SERVER_PORT
 from . import echo_function
 from . import noop_serializer
 
@@ -19,7 +19,7 @@ def test_worker_add_function_and_function_exists(w):
 
 
 def test_worker_add_server(w):
-    w.add_server(TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT)
+    w.add_server(TEST_SERVER_HOST, TEST_SERVER_PORT)
     with pytest.raises(pygear.GETADDRINFO):
         w.add_server('invalid host name', -1)
 
@@ -93,7 +93,7 @@ def test_worker_work(w):
 
 
 def test_work_no_functions(w):
-    w.add_server(TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT)
+    w.add_server(TEST_SERVER_HOST, TEST_SERVER_PORT)
     with pytest.raises(pygear.NO_REGISTERED_FUNCTIONS):
         w.work()
 
@@ -112,7 +112,7 @@ def test_worker_set_timeout(w):
 
 def test_work_timeout(w):
     w.add_function("test_method", 60, echo_function)
-    w.add_server(TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT)
+    w.add_server(TEST_SERVER_HOST, TEST_SERVER_PORT)
     w.set_timeout(30)
     with pytest.raises(pygear.TIMEOUT):
         w.work()

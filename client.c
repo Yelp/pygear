@@ -195,14 +195,15 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
         return NULL; \
     } \
     Py_XDECREF(method_result); \
-    python_task->g_Task = new_task; \
-    /* Return task */ \
-    PyObject* result = Py_BuildValue("O", python_task); \
     Py_XDECREF(argList); \
+    /* Return task */ \
+    python_task->g_Task = new_task; \
+    PyObject* result = Py_BuildValue("O", python_task); \
     python_task->g_Task = NULL; \
     Py_XDECREF(python_task); \
     return result; \
 }
+
 
 CLIENT_ADD_TASK()
 CLIENT_ADD_TASK(_background)

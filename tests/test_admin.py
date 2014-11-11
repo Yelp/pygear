@@ -1,13 +1,14 @@
 import pytest
 import pygear
 
-from . import TEST_GEARMAN_SERVER
-from . import TEST_GEARMAN_PORT
+from . import TEST_SERVER_HOST
+from . import TEST_SERVER_PORT
+from . import TEST_SERVER_VERSION
 
 
 @pytest.fixture
 def a():
-    return pygear.Admin(TEST_GEARMAN_SERVER, TEST_GEARMAN_PORT)
+    return pygear.Admin(TEST_SERVER_HOST, TEST_SERVER_PORT)
 
 
 def test_admin_cancel_job(a):
@@ -27,6 +28,7 @@ def test_admin_drop_function(a):
 
 
 def test_admin_getpid(a):
+    # ok
     pass
 
 
@@ -55,15 +57,17 @@ def test_admin_shutdown(a):
 
 
 def test_admin_status(a):
+    # ok
     pass
 
 
 def test_admin_verbose(a):
+    # ok
     pass
 
 
 def test_admin_version(a):
-    pass
+    assert a.version() == TEST_SERVER_VERSION
 
 
 def test_admin_workers(a):

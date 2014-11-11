@@ -267,16 +267,10 @@ static bool _check_if_server_raises_error(PyObject* response_string) {
 
 
 static bool string_endswith(const char* haystack, const char* needle) {
-    size_t haystack_len, needle_len;
-    haystack_len = strlen(haystack);
-    needle_len = strlen(needle);
-    if (haystack_len < needle_len) {
-        return false;
-    }
-    if (strncmp(&(haystack[haystack_len - needle_len]), needle, needle_len) == 0) {
-        return true;
-    }
-    return false;
+    // check whether haystack is ends with needle
+    size_t hlen = strlen(haystack);
+    size_t nlen = strlen(needle);
+    return (hlen >= nlen) && (0 == strcmp(haystack + hlen - nlen, needle));
 }
 
 
@@ -317,12 +311,12 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
         strncpy(&(result[result_bytes]), buf, bytes_read);
         result_bytes += bytes_read;
         result[result_bytes] = '\0';
+
         if (string_endswith(result, eom_mark)) {
             break;
         }
     } while (1);
     ret = Py_BuildValue("s#", result, result_bytes);
-
 catch:
     if (result != NULL) {
         free(result);
@@ -431,11 +425,9 @@ static PyObject* pygear_admin_getpid(pygear_AdminObject* self) {
         goto catch;
     }
     success = true;
-    pid_str = PyList_GetItem(parsed_result, 0);
-
+    pid_str = PyList_GetItem(parsed_result, 0); // borrowed ref
 catch:
     Py_XDECREF(raw_result);
-    Py_XDECREF(parsed_result);
     if (success) {
         return PyNumber_Int(pid_str);
     }
@@ -703,10 +695,6 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
     PyObject* key2 = PyString_FromString("running");
     PyObject* key3 = PyString_FromString("available_workers");
 
-    PyObject* statfield_1_new = NULL;
-    PyObject* statfield_2_new = NULL;
-    PyObject* statfield_3_new = NULL;
-
     raw_result = _pygear_admin_make_call(self, "status\r\n", "\n.\n");
     if (!raw_result) {
         goto catch;
@@ -764,6 +752,10 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
         if (!statfield_3) {
             goto catch;
         }
+    
+        PyObject* statfield_1_new = NULL;
+        PyObject* statfield_2_new = NULL;
+        PyObject* statfield_3_new = NULL;
 
         statfield_1_new = PyNumber_Int(statfield_1);
         if (!statfield_1_new) {
@@ -771,10 +763,13 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
         }
         statfield_2_new = PyNumber_Int(statfield_2);
         if (!statfield_2_new) {
+            Py_XDECREF(statfield_1_new);
             goto catch;
         }
         statfield_3_new = PyNumber_Int(statfield_3);
         if (!statfield_3_new) {
+            Py_XDECREF(statfield_1_new);
+            Py_XDECREF(statfield_2_new);
             goto catch;
         }
 
@@ -788,31 +783,24 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
         PyDict_SetItem(status_dict, key1, statfield_1_new);
         PyDict_SetItem(status_dict, key2, statfield_2_new);
         PyDict_SetItem(status_dict, key3, statfield_3_new);
+        PyList_Append(status_dict_list, status_dict); // increase ref count
 
         Py_XDECREF(statfield_1_new);
         Py_XDECREF(statfield_2_new);
         Py_XDECREF(statfield_3_new);
-
-        PyList_Append(status_dict_list, status_dict);
-
         Py_XDECREF(status_dict);
         Py_XDECREF(status_line_list);
     }
-
 catch:
     Py_XDECREF(raw_result); 
     Py_XDECREF(status_string);
     Py_XDECREF(status_string_trip);
     Py_XDECREF(status_list);
-    Py_XDECREF(status_dict_list);
     Py_XDECREF(status_line_list);
     Py_XDECREF(key0);
     Py_XDECREF(key1);
     Py_XDECREF(key2);
     Py_XDECREF(key3);
-    Py_XDECREF(statfield_1_new);
-    Py_XDECREF(statfield_2_new);
-    Py_XDECREF(statfield_3_new);
 
     return status_dict_list;
 }
@@ -830,10 +818,9 @@ static PyObject* pygear_admin_verbose(pygear_AdminObject* self) {
     if (!_pygear_admin_check_list_size_is_one_and_raise(raw_result, parsed_result)) {
         goto catch;
     }
-    ret = PyList_GetItem(parsed_result, 0);
+    ret = PyList_GetItem(parsed_result, 0); // borrowed ref
 catch:
     Py_XDECREF(raw_result);
-    Py_XDECREF(parsed_result);
     return ret;
 }
 
@@ -842,17 +829,16 @@ static PyObject* pygear_admin_version(pygear_AdminObject* self) {
     PyObject* raw_result = _pygear_admin_make_call(self, "version\r\n", "\n");
     PyObject* parsed_result = NULL;
     PyObject* ret = NULL;
-    if (!_pygear_extract_response_success(raw_result, &parsed_result)) { // parsed_result will be assigned a new ref
+    if (!_pygear_extract_response_success(raw_result, &parsed_result)) {
         _pygear_admin_raise_exception(raw_result);
         goto catch;
     }
     if (!_pygear_admin_check_list_size_is_one_and_raise(raw_result, parsed_result)) {
         goto catch;
     }
-    ret = PyList_GetItem(parsed_result, 0);
+    ret = PyList_GetItem(parsed_result, 0); // borrowed ref
 catch:
     Py_XDECREF(raw_result);
-    Py_XDECREF(parsed_result);
     return ret;
 }
 
@@ -912,7 +898,7 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
         // 'FD IP-ADDRESS CLIENT-ID :' and potentially 'FUNCTION ...'
         if (PyList_Size(worker_line_list) < 4) {
             PyObject* err_string = PyString_FromFormat("Malformed response line from server: '%s'",
-                    PyString_AsString(worker_line));
+                PyString_AsString(worker_line));
             PyErr_SetObject(PyGearExn_ERROR, err_string);
             Py_XDECREF(err_string);
             goto catch;
