@@ -1,9 +1,6 @@
-import uuid
-
 import pytest
 import pygear
 
-from . import cat_serializer
 from . import noop_serializer
 
 
@@ -25,38 +22,19 @@ def test_client_add_servers(c):
 
 
 def test_client_add_task(c):
-    unique = uuid.uuid4().hex
-    t = c.add_task('reverse', 'A string to be reversed', unique)
+    t = c.add_task('reverse', 'A string to be reversed')
     assert type(t) == pygear.Task
-#    assert t.function_name() == 'reverse'
-#    assert t.unique() == unique
+    # see test_integration.py for cases with run_tasks()
 
-
-def test_client_add_task_background(c):
-    pass
-
-
-def test_client_add_task_high(c):
-    pass
-
-
-def test_client_add_task_high_background(c):
-    pass
-
-
-def test_client_add_task_low(c):
-    pass
-
-
-def test_client_add_task_low_background(c):
-    pass
+# All other add_task_* methods are implemented using the same macro as add_task(...) :
+# add_task_background(...)
+# add_task_low(...)
+# add_task_low_background(...)
+# add_task_high(...)
+# add_task_high_background(...)
 
 
 def test_client_add_task_status(c):
-    pass
-
-
-def test_client_clear_fn(c):
     pass
 
 
@@ -68,33 +46,28 @@ def test_client_clone(c):
 
 
 def test_client_do(c):
-    # do without server
     with pytest.raises(pygear.NO_SERVERS):
         c.do("reverse", "Jackdaws love my big sphynx of quartz")
-    # see test_integration.py for valid case
+    # see test_integration.py for valid cases
+
+
+# All other do_*(...) methods are implemented using the same macro as do(...)
+# do_low(...)
+# do_high(...)
 
 
 def test_client_do_background(c):
-    pass
+    with pytest.raises(pygear.NO_SERVERS):
+        c.do_background("reverse", "Jackdaws love my big sphynx of quartz")
+    # see test_integration.py for valid cases
 
 
-def test_client_do_high(c):
-    pass
-
-
-def test_client_do_high_background(c):
-    pass
+# All other do_*_background(...) methods are implemented using the same macro as do_background(...)
+# do_low_background(...)
+# do_high_background(...)
 
 
 def test_client_do_job_handle(c):
-    pass
-
-
-def test_client_do_low(c):
-    pass
-
-
-def test_client_do_low_background(c):
     pass
 
 
@@ -135,29 +108,6 @@ def test_client_run_tasks(c):
         c.run_tasks()
 
 
-def test_client_set_complete_fn(c):
-    # see test_integration.py
-    pass
-
-
-def test_client_set_created_fn(c):
-    # see test_integration.py
-    pass
-
-
-def test_client_set_data_fn(c):
-    # see test_integration.py
-    pass
-
-
-def test_client_set_exception_fn(c):
-    # see test_integration.py
-    pass
-
-
-def test_client_set_fail_fn(c):
-    # see test_integration.py
-    pass
 
 
 def test_client_set_log_fn(c):

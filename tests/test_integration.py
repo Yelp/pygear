@@ -7,6 +7,7 @@ import sys
 from . import TEST_SERVER_HOST
 from . import TEST_SERVER_PORT
 from . import TEST_TIMEOUT_MSEC
+from . import echo_function
 from . import cat_serializer
 
 
@@ -31,11 +32,8 @@ def w():
 
 
 def thread_worker_echo():
-    def worker_fn_echo(job):
-        return job.workload()
-
     worker = w()
-    worker.add_function("test_integration_echo", 0, worker_fn_echo)
+    worker.add_function("test_integration_echo", 0, echo_function)
     sys.stderr.write("Worker starting...\n")
     try:
         while True:
@@ -45,24 +43,49 @@ def thread_worker_echo():
     sys.stderr.write("Worker done\n")
 
 
-def thread_client_echo():
+def thread_client_echo(background):
     client = c()
     sys.stderr.write("Client running...\n")
-    do_result = client.do("test_integration_echo", "Test string!")
+    if background:
+        job_handle = client.do_background("test_integration_echo", "Test string!")
+        assert type(job_handle) is str
+    else:
+        do_result = client.do("test_integration_echo", "Test string!")
+        assert do_result == "Test string!"
     sys.stderr.write("Client done\n")
-    assert do_result == "Test string!"
 
 
 def test_client_do(c):
     worker_thread = multiprocessing.Process(target=thread_worker_echo)
     worker_thread.start()
-    client_thread = multiprocessing.Process(target=thread_client_echo)
+    client_thread = multiprocessing.Process(target=thread_client_echo, args=(False,))
     client_thread.start()
     client_thread.join()
     worker_thread.join()
 
 
-def test_callback_complete(c):
+def test_client_do_background(c):
+    worker_thread = multiprocessing.Process(target=thread_worker_echo)
+    worker_thread.start()
+    client_thread = multiprocessing.Process(target=thread_client_echo, args=(True,))
+    client_thread.start()
+    client_thread.join()
+    worker_thread.join()
+
+
+def test_client_clear_fn(c):
+    cb_test = mock.Mock()
+    c.set_complete_fn(cb_test)
+    c.clear_fn()  # clear all callback functions
+    c.add_task("test_integration_echo", "Some string")
+    worker_thread = multiprocessing.Process(target=thread_worker_echo)
+    worker_thread.start()
+    c.run_tasks()
+    worker_thread.join()
+    assert not cb_test.called
+
+
+def test_client_set_complete_fn(c):
     cb_test = mock.Mock()
     c.set_complete_fn(cb_test)
     c.add_task("test_integration_echo", "Some string")
@@ -73,7 +96,7 @@ def test_callback_complete(c):
     assert cb_test.called
 
 
-def test_callback_created(c):
+def test_client_set_created_fn(c):
     cb_test = mock.Mock()
     c.set_created_fn(cb_test)
     c.add_task("test_integration_echo", "Some string")
@@ -99,7 +122,7 @@ def thread_worker_data():
     sys.stderr.write("Worker done\n")
 
 
-def test_callback_data(c):
+def test_client_data_fn(c):
     cb_test = mock.Mock()
     c.set_data_fn(cb_test)
     c.add_task("test_integration_data", "Some string")
@@ -125,7 +148,7 @@ def thread_worker_except():
     sys.stderr.write("Worker done\n")
 
 
-def test_callback_exception(c):
+def test_client_set_exception_fn(c):
     cb_test = mock.Mock()
     c.set_exception_fn(cb_test)
     c.add_task("test_integration_except", "Some string")
@@ -151,7 +174,7 @@ def thread_worker_fail():
     sys.stderr.write("Worker done\n")
 
 
-def test_callback_fail(c):
+def test_client_set_fail_fn(c):
     cb_test = mock.Mock()
     c.set_fail_fn(cb_test)
     c.add_task("test_integration_fail", "Some string")
