@@ -36,6 +36,14 @@ is now necessary to specify your own serializer using the .set_serializer
 method on the Client / Worker. The parameter to set_serializer must be
 an object that implements the loads(string) and dumps(object) methods.
 
+Since Python signal handlers can only occur between the "atomic" instructions
+of the Python interpreter, signals arriving during the execution of
+libgearman maybe delayed for an arbitrary amount of time. In the worst case,
+libgearman hangs and the users are not able to terminate the program using
+Ctrl-C (KeyboardInterrupt). Thus, it is highly recommended that pygear
+users explicitly call .set_timeout for both workers and blocking clients.
+
+
 ## Examples
 
 ### Reverse
@@ -45,21 +53,52 @@ an object that implements the loads(string) and dumps(object) methods.
     import pygear
 
     def reverse(job):
-       workload = job.workload()
-       return workload[::-1]
+        workload = job.workload()
+        return workload[::-1]
 
     w = pygear.Worker()
     w.add_server('localhost', 4730)
     w.add_function("reverse", 0, reverse)
-    w.work()
+
+    while True:
+        try:
+            w.set_timeout(1000)  # yield
+            w.work()
+        except pygear.TIMEOUT:
+            pass
 
 
 **Blocking Client:**
 
     import pygear
+
     c = pygear.Client()
     c.add_server('localhost', 4730)
-    print c.do('reverse', 'Hello python!')
+
+    # submit foreground job to server and wait for the result
+    try:
+        c.set_timeout(5000)  # wait at most 5 seconds
+        result = c.do('reverse', 'Hello pygear!')
+        print result
+    except pygear.TIMEOUT:
+        print 'Wait for too long!'
+
+
+**Non-blocking Client:**
+
+    import pygear
+    
+    c = pygear.Client()
+    c.add_server('localhost', 4730)
+
+    # submit background job to server and return immediately
+    res = c.do_background('reverse', 'Hello pygear!')
+    result = res['result']  # NULL if submission fails; None if success
+    job_handle = res['job_handle']
+
+    # check job status if needed
+    print c.job_status(job_handle)
+
 
 **Asynchronous Client:**
 
@@ -71,8 +110,18 @@ an object that implements the loads(string) and dumps(object) methods.
     c = pygear.Client()
     c.add_server('localhost', 4730)
     c.set_complete_fn(oncomplete_callback)
-    c.add_task('reverse', 'Hello python!')
+
+    # add tasks to local queue
+    c.add_task('reverse', 'Hello pygear task 1!')
+    c.add_task('reverse', 'Hello pygear task 2!')
+
+    # background jobs will not trigger oncomplete_callback function
+    c.add_task_background('reverse', 'Hello pygear task 3!')
+    ...
+
+    # submit to server and run tasks
     c.run_tasks()
+
 
 ### Failure Handling
 

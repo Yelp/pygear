@@ -29,6 +29,7 @@
 #include <Python.h>
 #include <libgearman-1.0/gearman.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
@@ -46,7 +47,7 @@
 
 #define _ADMINMETHOD(name,flags) {#name,(PyCFunction) pygear_admin_##name,flags,pygear_admin_##name##_doc},
 
-#define ADMIN_DEFAULT_TIMEOUT 10.0
+#define ADMIN_DEFAULT_TIMEOUT 60.0
 
 typedef struct {
     PyObject_HEAD
@@ -56,6 +57,7 @@ typedef struct {
     int sockfd;
 } pygear_AdminObject;
 
+
 PyDoc_STRVAR(admin_module_docstring, "Represents a Gearman administrative client");
 
 /* Class init methods */
@@ -64,86 +66,93 @@ int Admin_init(pygear_AdminObject *self, PyObject *args, PyObject *kwds);
 void Admin_dealloc(pygear_AdminObject* self);
 
 /* Method definitions */
+static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_admin_cancel_job_doc,
+"Cancel a job by job handle.\n\n"
+"@param[in] handle - String handle of the job to cancel.\n\n"
+"@return None on success and NULL on failure.");
+
 static PyObject* pygear_admin_clone(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_clone_doc,
-"Clone a client structure.");
-
-static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_admin_set_server_doc,
-"Add a job server to a client. This goes into a list of servers that can be\n"
-"used to run tasks. No socket I/O happens here, it is just added to a list.\n"
-"@param[in] host Hostname or IP address (IPv4 or IPv6) of the server to add.\n"
-"@param[in] port Port of the server to add.\n"
-"@raises Pygear exception on failure.");
-
-static PyObject* pygear_admin_status(pygear_AdminObject* self);
-PyDoc_STRVAR(pygear_admin_status_doc,
-"Get the status of the functions on the gearman server\n"
-"Returns a list of dictionaries, each of which has four keys:\n"
-"function: string: name of the queue\n"
-"total: int: number of tasks currently in queue\n"
-"running: int: number of tasks currently being run by workers\n"
-"available_workers: number of workers available to process tasks in that queue");
-
-static PyObject* pygear_admin_workers(pygear_AdminObject* self);
-PyDoc_STRVAR(pygear_admin_workers_doc,
-"Get the status of all attached workers");
-
-static PyObject* pygear_admin_version(pygear_AdminObject* self);
-PyDoc_STRVAR(pygear_admin_version_doc,
-"Get the version number of the server");
-
-static PyObject* pygear_admin_maxqueue(pygear_AdminObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_admin_maxqueue_doc,
-"Set the max queue length on the server\n"
-"@param[in] queuelen New max queue length for the gearman server");
-
-static PyObject* pygear_admin_shutdown(pygear_AdminObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_admin_shutdown_doc,
-"Shut down the gearman server"
-"@param[in] graceful Optional boolean whether to shutdown gracefully");
-
-static PyObject* pygear_admin_verbose(pygear_AdminObject* self);
-PyDoc_STRVAR(pygear_admin_verbose_doc,
-"Get the verbose level of the server");
-
-static PyObject* pygear_admin_getpid(pygear_AdminObject* self);
-PyDoc_STRVAR(pygear_admin_getpid_doc,
-"Get the PID of the gearman server");
-
-static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_admin_drop_function_doc,
-"Instruct the server to drop a function by name\n"
-"@param[in] func_name Name of the function (queue) to drop");
+"Clone a pygear administrative client.");
 
 static PyObject* pygear_admin_create_function(pygear_AdminObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_admin_create_function_doc,
-"Instruct the server to create a function \n"
-"@param[in] func_name Name of the function (queue) to create");
+"Instruct the server to create a function.\n\n"
+"@param[in] function_name - Name of the function (queue) to create.\n\n"
+"@return None on success and NULL on failure.");
+
+static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_admin_drop_function_doc,
+"Instruct the server to drop a function by name.\n\n"
+"@param[in] function_name - Name of the function (queue) to drop.\n\n"
+"@return None on success and NULL on failure.");
+
+static PyObject* pygear_admin_getpid(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_getpid_doc,
+"Get the PID of the gearman server.\n\n"
+"@return integer.\n"
+"@return NULL on failure.");
+
+static PyObject* pygear_admin_maxqueue(pygear_AdminObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_admin_maxqueue_doc,
+"Set the max queue length on the server.\n\n"
+"@param[in] queue_name - Name of the queue to set.\n"
+"@param[in] queue_size - New max queue length.\n\n"
+"@return None on success and NULL on failure.");
+
+static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_admin_set_server_doc,
+"Set the job server of this administrative client.\n"
+"No socket I/O happens here. It simply set the host and port values.\n\n"
+"@param[in] host - Hostname or IP address (IPv4 or IPv6) of the server.\n"
+"@param[in] port - Port of the server to add.\n\n"
+"@return None on success.\n"
+"@return NULL and raises pygear exception on failure.");
 
 static PyObject* pygear_admin_set_timeout(pygear_AdminObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_admin_set_timeout_doc,
 "Set the timeout (in seconds) for socket operations.\n"
-"By default, the timeout is one minute.\n"
-"@param[in] timeout Float number of seconds to wait");
+"By default, the timeout is 60 seconds.\n\n"
+"@param[in] timeout - Float number of seconds to wait.\n\n"
+"@return None on success and NULL on failure.");
 
 static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_show_jobs_doc,
-"Show jobs currently on the server.\n"
-"Returns a list of dicts containing the following:\n"
-"handle: The job handle for the job\n"
-"retries: \n"
-"ignore_job: \n"
-"job_queued: ");
+"Show jobs currently on the server.\n\n"
+"@return a list of dictionaries containing the following keys:\n"
+"'handle' 'retries' 'ignore_job' 'job_queued'");
 
 static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_show_unique_jobs_doc,
-"Get a list of Job unique IDs");
+"Get a list of unique IDs of the jobs currently on the server.");
 
-static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* args);
-PyDoc_STRVAR(pygear_admin_cancel_job_doc,
-"Cancel a job by job handle.\n"
-"@param[in] handle String handle of the job to cancel");
+static PyObject* pygear_admin_shutdown(pygear_AdminObject* self, PyObject* args);
+PyDoc_STRVAR(pygear_admin_shutdown_doc,
+"Shut down the gearman server.\n\n"
+"@param[in] graceful - Optional boolean whether to shutdown gracefully.");
+
+static PyObject* pygear_admin_status(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_status_doc,
+"Get the status of the functions on the gearman server.\n\n"
+"@return a list of dictionaries, each of which has four keys:\n"
+"'function': string - Name of the queue\n"
+"'total': int - Number of tasks currently in queue.\n"
+"'running': int - Number of tasks currently being run by workers.\n"
+"'available_workers': int - Number of workers available to process tasks in that queue.");
+
+static PyObject* pygear_admin_verbose(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_verbose_doc,
+"Get the verbose level of the server.");
+
+static PyObject* pygear_admin_version(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_version_doc,
+"Get the version number of the server.");
+
+static PyObject* pygear_admin_workers(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_workers_doc,
+"Get the status of all attached workers.");
+
 
 /* Module method specification */
 static PyMethodDef admin_module_methods[] = {

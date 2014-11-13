@@ -34,12 +34,10 @@
 
 PyObject* Task_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
     pygear_TaskObject* self;
-
     self = (pygear_TaskObject *)type->tp_alloc(type, 0);
     if (self != NULL) {
         self->g_Task = NULL;
     }
-
     return (PyObject *)self;
 }
 
@@ -81,13 +79,11 @@ static PyObject* pygear_task_job_handle(pygear_TaskObject* self) {
 }
 
 static PyObject* pygear_task_is_known(pygear_TaskObject* self) {
-    return Py_BuildValue("O",
-        (gearman_task_is_known(self->g_Task) ? Py_True : Py_False));
+    return Py_BuildValue("O", (gearman_task_is_known(self->g_Task) ? Py_True : Py_False));
 }
 
 static PyObject* pygear_task_is_running(pygear_TaskObject* self) {
-    return Py_BuildValue("O",
-        (gearman_task_is_running(self->g_Task) ? Py_True : Py_False));
+    return Py_BuildValue("O", (gearman_task_is_running(self->g_Task) ? Py_True : Py_False));
 }
 
 static PyObject* pygear_task_numerator(pygear_TaskObject* self) {
@@ -96,6 +92,10 @@ static PyObject* pygear_task_numerator(pygear_TaskObject* self) {
 
 static PyObject* pygear_task_denominator(pygear_TaskObject* self) {
     return Py_BuildValue("i", gearman_task_denominator(self->g_Task));
+}
+
+static PyObject* pygear_task_error(pygear_TaskObject* self) {
+    return Py_BuildValue("s", gearman_task_error(self->g_Task));
 }
 
 static PyObject* pygear_task_returncode(pygear_TaskObject* self) {
@@ -112,7 +112,6 @@ static PyObject* pygear_task_data_size(pygear_TaskObject* self) {
 
 static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* args) {
     PyObject* serializer;
-
     if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
@@ -124,22 +123,18 @@ static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* a
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
-
     Py_INCREF(serializer);
     Py_XDECREF(self->serializer);
     self->serializer = serializer;
-
     Py_RETURN_NONE;
 }
 
 static PyObject* pygear_task_result(pygear_TaskObject* self) {
     const char* task_result = gearman_task_data(self->g_Task);
     size_t result_size = gearman_task_data_size(self->g_Task);
-
     if (!task_result) {
         Py_RETURN_NONE;
     }
-
     PyObject* py_result = Py_BuildValue("s#", task_result, result_size);
     if (!py_result) {
         PyErr_SetString(PyExc_SystemError, "Failed to build value from Task result\n");
@@ -151,6 +146,5 @@ static PyObject* pygear_task_result(pygear_TaskObject* self) {
         PyErr_SetString(PyExc_SystemError," Failed to unpickle internal Task data\n");
         return NULL;
     }
-
     return unpickled_result;
 }
