@@ -1,0 +1,4 @@
+2014-11-12  Baris Metin  <bmetin@yelp.com>
+
+	* v0.8
+	* Fix memory leaks & code re-org (by Pai-Wei)
