@@ -48,12 +48,13 @@ PyObject* Admin_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
 int Admin_init(pygear_AdminObject* self, PyObject* args, PyObject*kwds) {
     char* host;
     int port;
-    if (!PyArg_ParseTuple(args, "si", &host, &port)) {
+    int timeout = ADMIN_DEFAULT_TIMEOUT; // optional
+    if (!PyArg_ParseTuple(args, "si|f", &host, &port, &timeout)) {
         return -1;
     }
     self->host = strdup(host);
     self->port = port;
-    self->timeout = ADMIN_DEFAULT_TIMEOUT;
+    self->timeout = timeout;
     self->sockfd = -1;
     return 0;
 }
@@ -315,7 +316,11 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
         if (string_endswith(result, eom_mark)) {
             break;
         }
+
+        printf("make call raw result >%s<\n", result);
+
     } while (1);
+
     ret = Py_BuildValue("s#", result, result_bytes);
 catch:
     if (result != NULL) {
@@ -353,11 +358,8 @@ static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* arg
 
 
 static PyObject* pygear_admin_clone(pygear_AdminObject* self) {
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    PyObject *argList = Py_BuildValue("(s, i, f)", self->host, self->port, self->timeout);
     pygear_AdminObject* python_admin = (pygear_AdminObject*) PyObject_CallObject((PyObject *) &pygear_AdminType, argList);
-    python_admin->host = strdup(self->host);
-    python_admin->port = self->port;
-    python_admin->timeout = self->timeout;
     PyObject* ret = Py_BuildValue("O", python_admin);
     Py_XDECREF(argList);
     Py_XDECREF(python_admin);
@@ -371,7 +373,7 @@ static PyObject* pygear_admin_create_function(pygear_AdminObject* self, PyObject
     if (!PyArg_ParseTuple(args, "s#", &function_name, &function_name_len)) {
         return NULL;
     }
-    char* format_string = "create function  %s\r\n";
+    char* format_string = "create function %s\r\n";
     char* command_buffer = malloc(sizeof(char) * (strlen(format_string) + function_name_len));
     sprintf(command_buffer, format_string, function_name);
     PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
@@ -394,7 +396,7 @@ static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* 
     if (!PyArg_ParseTuple(args, "s#", &function_name, &function_name_len)) {
         return NULL;
     }
-    char* format_string = "drop function  %s\r\n";
+    char* format_string = "drop function %s\r\n";
     char* command_buffer = malloc(sizeof(char) * (strlen(format_string) + function_name_len));
     sprintf(command_buffer, format_string, function_name);
     PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
@@ -519,7 +521,7 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
     PyObject* statfield_2_new = NULL;
     PyObject* statfield_3_new = NULL;
 
-    raw_result = _pygear_admin_make_call(self, "show jobs\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "show jobs\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
@@ -636,7 +638,7 @@ static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self) {
     PyObject* status_string_trip = NULL;
     PyObject* uuid_list = NULL;
 
-    raw_result = _pygear_admin_make_call(self, "show unique jobs\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "show unique jobs\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
@@ -695,7 +697,7 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
     PyObject* key2 = PyString_FromString("running");
     PyObject* key3 = PyString_FromString("available_workers");
 
-    raw_result = _pygear_admin_make_call(self, "status\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "status\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
@@ -858,7 +860,7 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
     PyObject* key2 = PyString_FromString("client_id");
     PyObject* key3 = PyString_FromString("functions");
 
-    raw_result = _pygear_admin_make_call(self, "workers\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "workers\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
