@@ -129,10 +129,23 @@ to run administrative tasks. Arguments of the commands are separated by
 whitespace. Commands are terminated with a CRLF('\r\n'), although just an
 LF('\n') will be accepted as well.
 See [protocol](https://github.com/paiweilai1984/gearman-packet/blob/master/PROTOCOL.md)
-for details.
+for details of latest protocols.
 
+The following basic commands are supported:
+- workers
+- status
+- maxqueue [function_name] [max_queue_size]
+- shutdown [graceful]
+- version
 
-
+The following commands are supported in C++ Gearmand Extension (undocumented):
+- getpid
+- verbose
+- cancel job [job_id]
+- create function [function_name]
+- drop function [function_name]
+- show jobs
+- show unique jobs
 
 ### Failure Handling
 
