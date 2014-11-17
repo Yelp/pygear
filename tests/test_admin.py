@@ -8,9 +8,9 @@ from . import TEST_SERVER_PORT
 from . import TEST_SERVER_VERSION
 
 
-@pytest.fixture
-def a():
-    return pygear.Admin(TEST_SERVER_HOST, TEST_SERVER_PORT)
+#@pytest.fixture
+#def a():
+#    return pygear.Admin(TEST_SERVER_HOST, TEST_SERVER_PORT)
 
 class TestPygearAdminClient(object):
 
@@ -25,7 +25,7 @@ class TestPygearAdminClient(object):
 
     def test_admin_clone(self):
         ac = self.admin.clone()
-        assert ac.version() == TEST_SERVER_VERSION
+        assert ac.info() == self.admin.info()
 
     def test_admin_create_function(self):
         pass
@@ -55,8 +55,8 @@ class TestPygearAdminClient(object):
         pass
 
     def test_admin_status(self):
-#        self.admin_client.status()
-        pass
+        self.admin_client.status()
+#        pass
 
     def test_admin_verbose(self):
 #        self.admin_client.verbose()

@@ -94,6 +94,12 @@ PyDoc_STRVAR(pygear_admin_getpid_doc,
 "@return integer.\n"
 "@return NULL on failure.");
 
+static PyObject* pygear_admin_info(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_info_doc,
+"Get the information of the server this gearman admin client connects to.\n\n"
+"@return dictionary containing the following keys:\n"
+"'host', 'port', 'timeout'.");
+
 static PyObject* pygear_admin_maxqueue(pygear_AdminObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_admin_maxqueue_doc,
 "Set the max queue length on the server.\n\n"
@@ -165,6 +171,7 @@ static PyMethodDef admin_module_methods[] = {
     _ADMINMETHOD(shutdown,                 METH_VARARGS)
     _ADMINMETHOD(verbose,                  METH_NOARGS)
     _ADMINMETHOD(getpid,                   METH_NOARGS)
+    _ADMINMETHOD(info,                     METH_NOARGS)
     _ADMINMETHOD(drop_function,            METH_VARARGS)
     _ADMINMETHOD(create_function,          METH_VARARGS)
     _ADMINMETHOD(set_timeout,              METH_VARARGS)

@@ -48,10 +48,11 @@ PyObject* Admin_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
 int Admin_init(pygear_AdminObject* self, PyObject* args, PyObject*kwds) {
     char* host;
     int port;
-    int timeout = ADMIN_DEFAULT_TIMEOUT; // optional
+    float timeout = ADMIN_DEFAULT_TIMEOUT; // optional
     if (!PyArg_ParseTuple(args, "si|f", &host, &port, &timeout)) {
         return -1;
     }
+    printf("%f\n", timeout);
     self->host = strdup(host);
     self->port = port;
     self->timeout = timeout;
@@ -434,6 +435,17 @@ catch:
         return PyNumber_Int(pid_str);
     }
     return NULL;
+}
+
+
+static PyObject* pygear_admin_info(pygear_AdminObject* self) {
+    PyObject* ret_dict = Py_BuildValue(
+        "{s:s, s:i, s:f}",
+        "host", self->host,
+        "port", self->port,
+        "timeout", self->timeout
+    );
+    return ret_dict;
 }
 
 
