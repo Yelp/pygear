@@ -856,7 +856,6 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
     PyObject* worker_line_list = NULL;
 
     PyObject* worker_function_list = NULL;
-    //PyObject* worker_dict = NULL;
 
     PyObject* key0 = PyString_FromString("fd");
     PyObject* key1 = PyString_FromString("ip_address");
