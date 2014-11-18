@@ -5,12 +5,15 @@ from . import TEST_SERVER_VERSION
 from sandbox import gearmand_sandbox
 
 
-class TestPygearAdminBasicCommands(object):
+class TestPygearAdminCommands(object):
 
     @T.setup_teardown
     def setup_sandbox(self):
-        with gearmand_sandbox() as port:
-            self.admin = pygear.Admin('localhost', port)
+        with gearmand_sandbox() as sb:
+            self.sb_host = sb['host']
+            self.sb_port = sb['port']
+            self.sb_pid = sb['pid']
+            self.admin = pygear.Admin(self.sb_host, self.sb_port)
             yield
 
     def test_admin_status(self):
@@ -45,16 +48,7 @@ class TestPygearAdminBasicCommands(object):
     def test_admin_workers(self):
         self.admin.workers()
 
-
 # TODO: the following are only supported on latest gearmand server
-class TestPygearAdminExtensionCommands(object):
-
-    @T.setup_teardown
-    def setup_sandbox(self):
-        with gearmand_sandbox() as port:
-            self.admin = pygear.Admin('localhost', port)
-            yield
-
     def test_admin_cancel_job(self):
         pass
 
@@ -65,12 +59,14 @@ class TestPygearAdminExtensionCommands(object):
         pass
 
     def test_admin_getpid(self):
-        pass
+        assert self.admin.getpid() == self.sb_pid
 
     def test_admin_show_jobs(self):
+        # unverified
         pass
 
     def test_admin_show_unique_jobs(self):
+        # unverified
         pass
 
     def test_admin_verbose(self):
