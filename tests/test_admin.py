@@ -1,6 +1,7 @@
 import pygear
 import testifycompat as T
 
+from . import TEST_SERVER_VERSION
 from sandbox import gearmand_sandbox
 
 
@@ -39,7 +40,7 @@ class TestPygearAdminBasicCommands(object):
         self.admin.shutdown(1)
 
     def test_version(self):
-        assert type(self.admin.version()) is str
+        assert self.admin.version() == TEST_SERVER_VERSION
 
     def test_admin_workers(self):
         self.admin.workers()

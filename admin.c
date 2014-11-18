@@ -52,7 +52,6 @@ int Admin_init(pygear_AdminObject* self, PyObject* args, PyObject*kwds) {
     if (!PyArg_ParseTuple(args, "si|f", &host, &port, &timeout)) {
         return -1;
     }
-    printf("%f\n", timeout);
     self->host = strdup(host);
     self->port = port;
     self->timeout = timeout;
@@ -317,9 +316,6 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
         if (string_endswith(result, eom_mark)) {
             break;
         }
-
-        printf("make call raw result >%s<\n", result);
-
     } while (1);
 
     ret = Py_BuildValue("s#", result, result_bytes);
