@@ -517,17 +517,12 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
     PyObject* status_string_trip = NULL;
     PyObject* status_list = NULL;
     PyObject* status_dict_list = NULL;
-    PyObject* status_dict = NULL;
     PyObject* status_line_list = NULL;
 
     PyObject* key0 = PyString_FromString("handle");
     PyObject* key1 = PyString_FromString("retries");
     PyObject* key2 = PyString_FromString("ignore_job");
     PyObject* key3 = PyString_FromString("job_queued");
-
-    PyObject* statfield_1_new = NULL;
-    PyObject* statfield_2_new = NULL;
-    PyObject* statfield_3_new = NULL;
 
     raw_result = _pygear_admin_make_call(self, "show jobs\r\n", ".\n");
     if (!raw_result) {
@@ -588,6 +583,10 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
             goto catch;
         }
 
+        PyObject* statfield_1_new = NULL;
+        PyObject* statfield_2_new = NULL;
+        PyObject* statfield_3_new = NULL;
+
         statfield_1_new = PyNumber_Int(statfield_1);
         if (!statfield_1) {
             goto catch;
@@ -600,22 +599,22 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
         if (!statfield_3) {
             goto catch;
         }
-        status_dict = PyDict_New();
+
+        PyObject* status_dict = PyDict_New();
         if (!status_dict) {
             goto catch;
         }
 
+        // PyDict_SetItem does not steal references
         PyDict_SetItem(status_dict, key0, statfield_0);
         PyDict_SetItem(status_dict, key1, statfield_1_new);
         PyDict_SetItem(status_dict, key2, statfield_2_new);
         PyDict_SetItem(status_dict, key3, statfield_3_new);
+        PyList_Append(status_dict_list, status_dict);
 
         Py_XDECREF(statfield_1_new);
         Py_XDECREF(statfield_2_new);
         Py_XDECREF(statfield_3_new);
-
-        PyList_Append(status_dict_list, status_dict);
-
         Py_XDECREF(status_dict);
         Py_XDECREF(status_line_list);
     }
@@ -625,16 +624,11 @@ catch:
     Py_XDECREF(status_string);
     Py_XDECREF(status_string_trip);
     Py_XDECREF(status_list);
-    Py_XDECREF(status_dict_list);
-    Py_XDECREF(status_dict);
     Py_XDECREF(status_line_list);
     Py_XDECREF(key0);
     Py_XDECREF(key1);
     Py_XDECREF(key2);
     Py_XDECREF(key3);
-    Py_XDECREF(statfield_1_new);
-    Py_XDECREF(statfield_2_new);
-    Py_XDECREF(statfield_3_new);
 
     return status_dict_list;
 }
@@ -860,8 +854,9 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
     PyObject* worker_list = NULL;
     PyObject* worker_dict_list = NULL;
     PyObject* worker_line_list = NULL;
+
     PyObject* worker_function_list = NULL;
-    PyObject* worker_dict = NULL;
+    //PyObject* worker_dict = NULL;
 
     PyObject* key0 = PyString_FromString("fd");
     PyObject* key1 = PyString_FromString("ip_address");
@@ -918,7 +913,10 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
         int list_i;
         for (list_i = 5; list_i < PyList_Size(worker_line_list); list_i++) {
             PyObject* method_result = NULL;
-            method_result = PyObject_CallMethod(worker_function_list, "append", "O", PyList_GetItem(worker_line_list, list_i));
+            method_result = PyObject_CallMethod(
+                worker_function_list, "append", "O", 
+                PyList_GetItem(worker_line_list, list_i)
+            );
             Py_XDECREF(method_result);
         }
 
@@ -935,17 +933,17 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
             goto catch;
         }
 
-        worker_dict = PyDict_New();
+        PyObject* worker_dict = PyDict_New();
         if (!worker_dict) {
             goto catch;
         }
 
+        // PyDict_SetItem does not steal references
         PyDict_SetItem(worker_dict, key0, worker_fd);
         PyDict_SetItem(worker_dict, key1, worker_ip_addr);
         PyDict_SetItem(worker_dict, key2, worker_client_id);
         PyDict_SetItem(worker_dict, key3, worker_function_list);
-
-        PyList_Append(worker_dict_list, worker_dict);
+        PyList_Append(worker_dict_list, worker_dict); // increase ref count
 
         Py_XDECREF(worker_dict);
         Py_XDECREF(worker_line_list);
@@ -957,10 +955,8 @@ catch:
     Py_XDECREF(worker_string);
     Py_XDECREF(worker_string_trip);
     Py_XDECREF(worker_list);
-    Py_XDECREF(worker_dict_list);
     Py_XDECREF(worker_line_list);
     Py_XDECREF(worker_function_list);
-    Py_XDECREF(worker_dict);
     Py_XDECREF(key0);
     Py_XDECREF(key1);
     Py_XDECREF(key2);
