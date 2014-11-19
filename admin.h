@@ -94,11 +94,19 @@ PyDoc_STRVAR(pygear_admin_getpid_doc,
 "@return integer.\n"
 "@return NULL on failure.");
 
+static PyObject* pygear_admin_info(pygear_AdminObject* self);
+PyDoc_STRVAR(pygear_admin_info_doc,
+"Get the information of the server this gearman admin client connects to.\n\n"
+"@return dictionary containing the following keys:\n"
+"'host', 'port', 'timeout'.");
+
 static PyObject* pygear_admin_maxqueue(pygear_AdminObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_admin_maxqueue_doc,
-"Set the max queue length on the server.\n\n"
-"@param[in] queue_name - Name of the queue to set.\n"
-"@param[in] queue_size - New max queue length.\n\n"
+"Set the maximum queue size for a function on the server.\n"
+"If no size is given, the default is used. If the size is negative, the queue"
+"is set to be unlimited."
+"@param[in] function_name - Name of the function to set.\n"
+"@param[in] queue_size - Maximum queue size.\n\n"
 "@return None on success and NULL on failure.");
 
 static PyObject* pygear_admin_set_server(pygear_AdminObject* self, PyObject* args);
@@ -143,7 +151,8 @@ PyDoc_STRVAR(pygear_admin_status_doc,
 
 static PyObject* pygear_admin_verbose(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_verbose_doc,
-"Get the verbose level of the server.");
+"Get the verbose level of the server.\n"
+"@return string in one of 'FATAL', 'ERROR', 'INFO', or 'DEBUG'.");
 
 static PyObject* pygear_admin_version(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_version_doc,
@@ -151,7 +160,9 @@ PyDoc_STRVAR(pygear_admin_version_doc,
 
 static PyObject* pygear_admin_workers(pygear_AdminObject* self);
 PyDoc_STRVAR(pygear_admin_workers_doc,
-"Get the status of all attached workers.");
+"Get the status of all attached workers.\n"
+"@return a list of workers with their file descriptors, IP-addresses, IDs,"
+"and the registered functions they can perform.");
 
 
 /* Module method specification */
@@ -165,6 +176,7 @@ static PyMethodDef admin_module_methods[] = {
     _ADMINMETHOD(shutdown,                 METH_VARARGS)
     _ADMINMETHOD(verbose,                  METH_NOARGS)
     _ADMINMETHOD(getpid,                   METH_NOARGS)
+    _ADMINMETHOD(info,                     METH_NOARGS)
     _ADMINMETHOD(drop_function,            METH_VARARGS)
     _ADMINMETHOD(create_function,          METH_VARARGS)
     _ADMINMETHOD(set_timeout,              METH_VARARGS)

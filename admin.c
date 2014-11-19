@@ -48,12 +48,13 @@ PyObject* Admin_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
 int Admin_init(pygear_AdminObject* self, PyObject* args, PyObject*kwds) {
     char* host;
     int port;
-    if (!PyArg_ParseTuple(args, "si", &host, &port)) {
+    float timeout = ADMIN_DEFAULT_TIMEOUT; // optional
+    if (!PyArg_ParseTuple(args, "si|f", &host, &port, &timeout)) {
         return -1;
     }
     self->host = strdup(host);
     self->port = port;
-    self->timeout = ADMIN_DEFAULT_TIMEOUT;
+    self->timeout = timeout;
     self->sockfd = -1;
     return 0;
 }
@@ -316,6 +317,7 @@ static PyObject* _pygear_admin_make_call(pygear_AdminObject* self, char* command
             break;
         }
     } while (1);
+
     ret = Py_BuildValue("s#", result, result_bytes);
 catch:
     if (result != NULL) {
@@ -353,11 +355,8 @@ static PyObject* pygear_admin_cancel_job(pygear_AdminObject* self, PyObject* arg
 
 
 static PyObject* pygear_admin_clone(pygear_AdminObject* self) {
-    PyObject *argList = Py_BuildValue("(O, O)", Py_None, Py_None);
+    PyObject *argList = Py_BuildValue("(s, i, f)", self->host, self->port, self->timeout);
     pygear_AdminObject* python_admin = (pygear_AdminObject*) PyObject_CallObject((PyObject *) &pygear_AdminType, argList);
-    python_admin->host = strdup(self->host);
-    python_admin->port = self->port;
-    python_admin->timeout = self->timeout;
     PyObject* ret = Py_BuildValue("O", python_admin);
     Py_XDECREF(argList);
     Py_XDECREF(python_admin);
@@ -371,7 +370,7 @@ static PyObject* pygear_admin_create_function(pygear_AdminObject* self, PyObject
     if (!PyArg_ParseTuple(args, "s#", &function_name, &function_name_len)) {
         return NULL;
     }
-    char* format_string = "create function  %s\r\n";
+    char* format_string = "create function %s\r\n";
     char* command_buffer = malloc(sizeof(char) * (strlen(format_string) + function_name_len));
     sprintf(command_buffer, format_string, function_name);
     PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
@@ -394,7 +393,7 @@ static PyObject* pygear_admin_drop_function(pygear_AdminObject* self, PyObject* 
     if (!PyArg_ParseTuple(args, "s#", &function_name, &function_name_len)) {
         return NULL;
     }
-    char* format_string = "drop function  %s\r\n";
+    char* format_string = "drop function %s\r\n";
     char* command_buffer = malloc(sizeof(char) * (strlen(format_string) + function_name_len));
     sprintf(command_buffer, format_string, function_name);
     PyObject* raw_result = _pygear_admin_make_call(self, command_buffer, "\n");
@@ -432,6 +431,17 @@ catch:
         return PyNumber_Int(pid_str);
     }
     return NULL;
+}
+
+
+static PyObject* pygear_admin_info(pygear_AdminObject* self) {
+    PyObject* ret_dict = Py_BuildValue(
+        "{s:s, s:i, s:f}",
+        "host", self->host,
+        "port", self->port,
+        "timeout", self->timeout
+    );
+    return ret_dict;
 }
 
 
@@ -507,7 +517,6 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
     PyObject* status_string_trip = NULL;
     PyObject* status_list = NULL;
     PyObject* status_dict_list = NULL;
-    PyObject* status_dict = NULL;
     PyObject* status_line_list = NULL;
 
     PyObject* key0 = PyString_FromString("handle");
@@ -515,11 +524,7 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
     PyObject* key2 = PyString_FromString("ignore_job");
     PyObject* key3 = PyString_FromString("job_queued");
 
-    PyObject* statfield_1_new = NULL;
-    PyObject* statfield_2_new = NULL;
-    PyObject* statfield_3_new = NULL;
-
-    raw_result = _pygear_admin_make_call(self, "show jobs\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "show jobs\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
@@ -578,6 +583,10 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
             goto catch;
         }
 
+        PyObject* statfield_1_new = NULL;
+        PyObject* statfield_2_new = NULL;
+        PyObject* statfield_3_new = NULL;
+
         statfield_1_new = PyNumber_Int(statfield_1);
         if (!statfield_1) {
             goto catch;
@@ -590,22 +599,22 @@ static PyObject* pygear_admin_show_jobs(pygear_AdminObject* self) {
         if (!statfield_3) {
             goto catch;
         }
-        status_dict = PyDict_New();
+
+        PyObject* status_dict = PyDict_New();
         if (!status_dict) {
             goto catch;
         }
 
+        // PyDict_SetItem does not steal references
         PyDict_SetItem(status_dict, key0, statfield_0);
         PyDict_SetItem(status_dict, key1, statfield_1_new);
         PyDict_SetItem(status_dict, key2, statfield_2_new);
         PyDict_SetItem(status_dict, key3, statfield_3_new);
+        PyList_Append(status_dict_list, status_dict);
 
         Py_XDECREF(statfield_1_new);
         Py_XDECREF(statfield_2_new);
         Py_XDECREF(statfield_3_new);
-
-        PyList_Append(status_dict_list, status_dict);
-
         Py_XDECREF(status_dict);
         Py_XDECREF(status_line_list);
     }
@@ -615,16 +624,11 @@ catch:
     Py_XDECREF(status_string);
     Py_XDECREF(status_string_trip);
     Py_XDECREF(status_list);
-    Py_XDECREF(status_dict_list);
-    Py_XDECREF(status_dict);
     Py_XDECREF(status_line_list);
     Py_XDECREF(key0);
     Py_XDECREF(key1);
     Py_XDECREF(key2);
     Py_XDECREF(key3);
-    Py_XDECREF(statfield_1_new);
-    Py_XDECREF(statfield_2_new);
-    Py_XDECREF(statfield_3_new);
 
     return status_dict_list;
 }
@@ -636,7 +640,7 @@ static PyObject* pygear_admin_show_unique_jobs(pygear_AdminObject* self) {
     PyObject* status_string_trip = NULL;
     PyObject* uuid_list = NULL;
 
-    raw_result = _pygear_admin_make_call(self, "show unique jobs\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "show unique jobs\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
@@ -695,7 +699,7 @@ static PyObject* pygear_admin_status(pygear_AdminObject* self) {
     PyObject* key2 = PyString_FromString("running");
     PyObject* key3 = PyString_FromString("available_workers");
 
-    raw_result = _pygear_admin_make_call(self, "status\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "status\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
@@ -850,15 +854,15 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
     PyObject* worker_list = NULL;
     PyObject* worker_dict_list = NULL;
     PyObject* worker_line_list = NULL;
+
     PyObject* worker_function_list = NULL;
-    PyObject* worker_dict = NULL;
 
     PyObject* key0 = PyString_FromString("fd");
     PyObject* key1 = PyString_FromString("ip_address");
     PyObject* key2 = PyString_FromString("client_id");
     PyObject* key3 = PyString_FromString("functions");
 
-    raw_result = _pygear_admin_make_call(self, "workers\r\n", "\n.\n");
+    raw_result = _pygear_admin_make_call(self, "workers\r\n", ".\n");
     if (!raw_result) {
         goto catch;
     }
@@ -908,7 +912,10 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
         int list_i;
         for (list_i = 5; list_i < PyList_Size(worker_line_list); list_i++) {
             PyObject* method_result = NULL;
-            method_result = PyObject_CallMethod(worker_function_list, "append", "O", PyList_GetItem(worker_line_list, list_i));
+            method_result = PyObject_CallMethod(
+                worker_function_list, "append", "O", 
+                PyList_GetItem(worker_line_list, list_i)
+            );
             Py_XDECREF(method_result);
         }
 
@@ -925,17 +932,17 @@ static PyObject* pygear_admin_workers(pygear_AdminObject* self) {
             goto catch;
         }
 
-        worker_dict = PyDict_New();
+        PyObject* worker_dict = PyDict_New();
         if (!worker_dict) {
             goto catch;
         }
 
+        // PyDict_SetItem does not steal references
         PyDict_SetItem(worker_dict, key0, worker_fd);
         PyDict_SetItem(worker_dict, key1, worker_ip_addr);
         PyDict_SetItem(worker_dict, key2, worker_client_id);
         PyDict_SetItem(worker_dict, key3, worker_function_list);
-
-        PyList_Append(worker_dict_list, worker_dict);
+        PyList_Append(worker_dict_list, worker_dict); // increase ref count
 
         Py_XDECREF(worker_dict);
         Py_XDECREF(worker_line_list);
@@ -947,10 +954,8 @@ catch:
     Py_XDECREF(worker_string);
     Py_XDECREF(worker_string_trip);
     Py_XDECREF(worker_list);
-    Py_XDECREF(worker_dict_list);
     Py_XDECREF(worker_line_list);
     Py_XDECREF(worker_function_list);
-    Py_XDECREF(worker_dict);
     Py_XDECREF(key0);
     Py_XDECREF(key1);
     Py_XDECREF(key2);
