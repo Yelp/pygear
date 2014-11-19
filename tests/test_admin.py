@@ -1,5 +1,5 @@
 import pygear
-import testifycompat as T
+import pytest
 
 from . import TEST_SERVER_VERSION
 from sandbox import gearmand_sandbox
@@ -7,7 +7,7 @@ from sandbox import gearmand_sandbox
 
 class TestPygearAdminCommands(object):
 
-    @T.setup_teardown
+    @pytest.yield_fixture(autouse=True)
     def setup_sandbox(self):
         with gearmand_sandbox() as sb:
             self.sb_host = sb['host']
