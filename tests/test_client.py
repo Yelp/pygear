@@ -108,8 +108,6 @@ def test_client_run_tasks(c):
         c.run_tasks()
 
 
-
-
 def test_client_set_log_fn(c):
     pass
 
