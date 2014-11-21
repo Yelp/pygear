@@ -10,6 +10,8 @@ class TestPygearAdminCommands(object):
     @pytest.yield_fixture(autouse=True)
     def setup_sandbox(self):
         with gearmand_sandbox() as sb:
+            if not sb['success']:
+                raise Exception("Gearmand sandbox setup error.")
             self.sb_host = sb['host']
             self.sb_port = sb['port']
             self.sb_pid = sb['pid']
