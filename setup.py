@@ -20,6 +20,7 @@ setup(
         'coverage',
         'flake8',
         'pylint',
-        'sphinx'
+        'sphinx',
+        'retrying'
     ]
 )

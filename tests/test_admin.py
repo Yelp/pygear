@@ -1,6 +1,9 @@
 import pygear
 import pytest
+from retrying import retry
 
+from . import RETRY_WAIT_MSEC
+from . import MAX_RETRIES
 from . import TEST_SERVER_VERSION
 from sandbox import gearmand_sandbox
 
@@ -9,6 +12,7 @@ class TestPygearAdminCommands(object):
 
     @pytest.yield_fixture(autouse=True)
     def setup_sandbox(self):
+        """Setup gearmand server sandbox."""
         with gearmand_sandbox() as sb:
             if not sb['success']:
                 raise Exception("Gearmand sandbox setup error.")
@@ -18,36 +22,45 @@ class TestPygearAdminCommands(object):
             self.admin = pygear.Admin(self.sb_host, self.sb_port)
             yield
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_status(self):
         assert self.admin.status() == []
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_clone(self):
         ac = self.admin.clone()
         assert ac.info() == self.admin.info()
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_maxqueue(self):
         self.admin.create_function('foo')
         self.admin.maxqueue('foo', 100)  # set max queue size for foo as 100
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_set_server(self):
         self.admin.set_server('host', 1234)
         assert self.admin.info()['host'] == 'host'
         assert self.admin.info()['port'] == 1234
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_set_timeout(self):
         assert self.admin.info()['timeout'] == 60  # default timeout
         self.admin.set_timeout(10)
         assert self.admin.info()['timeout'] == 10
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_shutdown(self):
         self.admin.shutdown(False)
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_shutdown_gracefully(self):
         self.admin.shutdown(True)
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_version(self):
         assert self.admin.version() == TEST_SERVER_VERSION
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_workers(self):
         self.admin.workers()
 
@@ -55,6 +68,7 @@ class TestPygearAdminCommands(object):
         # unknown command in 0.24 gearmand; needs to be tested on newer gearmand or removed
         pass
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_create_and_drop_function(self):
         assert self.admin.status() == []
         self.admin.create_function('foo')
@@ -69,6 +83,7 @@ class TestPygearAdminCommands(object):
         self.admin.drop_function('foo')
         assert self.admin.status() == []
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_getpid(self):
         assert self.admin.getpid() == self.sb_pid
 
@@ -80,5 +95,6 @@ class TestPygearAdminCommands(object):
         # unknown command in 0.24 gearmand; needs to be tested on newer gearmand or removed
         pass
 
+    @retry(stop_max_attempt_number=MAX_RETRIES, wait_fixed=RETRY_WAIT_MSEC)
     def test_admin_verbose(self):
         assert self.admin.verbose() in ['FATAL', 'ERROR', 'INFO', 'DEBUG']
