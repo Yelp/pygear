@@ -103,7 +103,7 @@ def test_client_remove_servers(c):
 
 def test_client_run_tasks(c):
     # add task without server
-    c.add_task("reverse", "Jackdaws love my big sphynx of quartz")
+    t = c.add_task("reverse", "Jackdaws love my big sphynx of quartz")
     with pytest.raises(pygear.NO_SERVERS):
         c.run_tasks()
 

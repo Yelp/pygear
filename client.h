@@ -248,7 +248,7 @@ PyDoc_STRVAR(pygear_client_get_options_doc,
 "Get options for a client.\n\n"
 "@return dictionary of options currently set on the client.");
 
-static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args);
+static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args, PyObject* kwargs);
 PyDoc_STRVAR(pygear_client_job_status_doc,
 "Get the status for a backgound task by its job handle.\n\n"
 "@return dictionary with the following keys:\n"
@@ -417,7 +417,7 @@ static PyMethodDef client_module_methods[] = {
     // Job management
     _CLIENTMETHOD(do_job_handle,            METH_VARARGS)
     _CLIENTMETHOD(do_status,                METH_NOARGS)
-    _CLIENTMETHOD(job_status,               METH_VARARGS)
+    _CLIENTMETHOD(job_status,               METH_VARARGS | METH_KEYWORDS)
     _CLIENTMETHOD(unique_status,            METH_VARARGS)
 
     // Callbacks

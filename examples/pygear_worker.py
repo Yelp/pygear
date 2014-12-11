@@ -5,8 +5,9 @@ import sys
 import pygear
 
 from util import parse_options_and_args
-from util import reverse
-from util import echo
+from util import test_reverse
+from util import test_echo
+from util import test_job_status
 from util import logging
 
 
@@ -18,8 +19,9 @@ def main():
 
     w = pygear.Worker()
     w.add_server(opt.server_host, opt.server_port)
-    w.add_function('reverse', FUNCTION_TIMEOUT, reverse)
-    w.add_function('echo', FUNCTION_TIMEOUT, echo)
+    w.add_function('test_reverse', FUNCTION_TIMEOUT, test_reverse)
+    w.add_function('test_echo', FUNCTION_TIMEOUT, test_echo)
+    w.add_function('test_job_status', FUNCTION_TIMEOUT, test_job_status)
 
     print pygear.__file__
     start_datetime = datetime.datetime.now()
@@ -30,7 +32,7 @@ def main():
 
     while time.time() < stop_time:
         try:
-            w.set_timeout(1000) # yield every second
+            w.set_timeout(1000)  # yield every second
             w.work()
         except pygear.TIMEOUT:
             print 'Server:%s:%r Since:%s %d seconds left.' \

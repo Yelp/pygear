@@ -198,10 +198,8 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
     Py_XDECREF(argList); \
     /* Return task */ \
     python_task->g_Task = new_task; \
-    PyObject* result = Py_BuildValue("O", python_task); \
-    python_task->g_Task = NULL; \
-    Py_XDECREF(python_task); \
-    return result; \
+    Py_XINCREF(python_task); \
+    return (PyObject*) python_task; \
 }
 
 
@@ -507,13 +505,16 @@ static PyObject* pygear_client_get_options(pygear_ClientObject* self) {
 }
 
 
-static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args) {
-    gearman_job_handle_t job_handle;
-    bool is_known, is_running;
-    unsigned numerator, denominator;
-    if (!PyArg_ParseTuple(args, "s", &job_handle)) {
+static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* args, PyObject* kwargs) {
+    char* job_handle;
+    static char* kwlist[] = {"job_handle"};
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &job_handle)) {
         return NULL;
     }
+    bool is_known = false;
+    bool is_running = false;
+    unsigned numerator = 0;
+    unsigned denominator = 0;
     gearman_return_t result = gearman_client_job_status(
         self->g_Client,
         job_handle,
