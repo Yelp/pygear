@@ -6,7 +6,8 @@ import sys
 
 from . import TEST_SERVER_HOST
 from . import TEST_SERVER_PORT
-from . import TEST_TIMEOUT_MSEC
+from . import CLIENT_TIMEOUT_MSEC
+from . import WORKER_TIMEOUT_MSEC
 from . import echo_function
 from . import cat_serializer
 
@@ -19,7 +20,7 @@ class TestError(Exception):
 def c():
     client = pygear.Client()
     client.add_server(TEST_SERVER_HOST, TEST_SERVER_PORT)
-    client.set_timeout(TEST_TIMEOUT_MSEC)
+    client.set_timeout(CLIENT_TIMEOUT_MSEC)
     return client
 
 
@@ -27,7 +28,7 @@ def c():
 def w():
     worker = pygear.Worker()
     worker.add_server(TEST_SERVER_HOST, TEST_SERVER_PORT)
-    worker.set_timeout(TEST_TIMEOUT_MSEC)
+    worker.set_timeout(WORKER_TIMEOUT_MSEC)
     return worker
 
 
