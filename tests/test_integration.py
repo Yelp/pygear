@@ -77,7 +77,7 @@ def test_client_clear_fn(c):
     cb_test = mock.Mock()
     c.set_complete_fn(cb_test)
     c.clear_fn()  # clear all callback functions
-    t = c.add_task("test_integration_echo", "Some string")
+    c.add_task("test_integration_echo", "Some string")
     worker_thread = multiprocessing.Process(target=thread_worker_echo)
     worker_thread.start()
     c.run_tasks()
@@ -88,7 +88,7 @@ def test_client_clear_fn(c):
 def test_client_set_complete_fn(c):
     cb_test = mock.Mock()
     c.set_complete_fn(cb_test)
-    t = c.add_task("test_integration_echo", "Some string")
+    c.add_task("test_integration_echo", "Some string")
     worker_thread = multiprocessing.Process(target=thread_worker_echo)
     worker_thread.start()
     c.run_tasks()
@@ -99,7 +99,7 @@ def test_client_set_complete_fn(c):
 def test_client_set_created_fn(c):
     cb_test = mock.Mock()
     c.set_created_fn(cb_test)
-    t = c.add_task("test_integration_echo", "Some string")
+    c.add_task("test_integration_echo", "Some string")
     worker_thread = multiprocessing.Process(target=thread_worker_echo)
     worker_thread.start()
     c.run_tasks()
@@ -125,7 +125,7 @@ def thread_worker_data():
 def test_client_data_fn(c):
     cb_test = mock.Mock()
     c.set_data_fn(cb_test)
-    t = c.add_task("test_integration_data", "Some string")
+    c.add_task("test_integration_data", "Some string")
     worker_thread = multiprocessing.Process(target=thread_worker_data)
     worker_thread.start()
     c.run_tasks()
@@ -151,7 +151,7 @@ def thread_worker_except():
 def test_client_set_exception_fn(c):
     cb_test = mock.Mock()
     c.set_exception_fn(cb_test)
-    t = c.add_task("test_integration_except", "Some string")
+    c.add_task("test_integration_except", "Some string")
     worker_thread = multiprocessing.Process(target=thread_worker_except)
     worker_thread.start()
     c.run_tasks()
@@ -177,7 +177,7 @@ def thread_worker_fail():
 def test_client_set_fail_fn(c):
     cb_test = mock.Mock()
     c.set_fail_fn(cb_test)
-    t = c.add_task("test_integration_fail", "Some string")
+    c.add_task("test_integration_fail", "Some string")
     worker_thread = multiprocessing.Process(target=thread_worker_fail)
     worker_thread.start()
     c.run_tasks()
@@ -215,6 +215,6 @@ def test_change_serializer(c):
     c.set_serializer(cat_serializer())
     worker_thread = multiprocessing.Process(target=thread_worker_cat_serializer)
     worker_thread.start()
-    t = c.add_task("test_integration_serializer", "Woof")
+    c.add_task("test_integration_serializer", "Woof")
     c.run_tasks()
     worker_thread.join()
