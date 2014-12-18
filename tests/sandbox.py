@@ -39,15 +39,27 @@ def pick_unused_port(host):
 def gearmand_sandbox(*args, **kwargs):
     """Run a gearmand instance in a subprocess and yield its information
 
-    :param wait_on_start: seconds to wait for gearmand to start (default 0.5)
+    :param timeout: max seconds to wait for gearmand to start (default 5)
     """
     host = 'localhost'
     port = pick_unused_port(host)
     cmd = ['gearmand', '-p', str(port)]
     proc = subprocess.Popen(cmd + list(args), stderr=PIPE, stdout=PIPE)
-    time.sleep(kwargs.pop('wait_on_start', 0.5))
+
+    # make sure the gearmand server is running before we yield
+    timeout = time.time() + kwargs.pop('timeout', 5)
+    success = False
+    while True:
+        ps_stdout = subprocess.Popen(['ps', 'ax'], stdout=PIPE).communicate()[0]
+        if 'gearmand -p %s' % str(port) in ps_stdout:
+            success = True
+            break
+        if time.time() > timeout:
+            proc.kill()  # make sure the proc is killed if timeout
+            break
+
     try:
-        yield {'host': host, 'port': port, 'pid': proc.pid}
+        yield {'host': host, 'port': port, 'pid': proc.pid, 'success': success}
     finally:
         proc.kill()
         print '\n'.join(proc.communicate())
