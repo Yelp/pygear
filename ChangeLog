@@ -1,6 +1,11 @@
+2015-01-29 Baris Metin <bmetin@yelp.com>
+
+	* v0.9.1 start following semver-like versions
+	* Fix library path (by Pai-Wei)
+
 2014-11-19  Baris Metin  <bmetin@yelp.com>
 
-	* v0.9 fix & improve admin interface
+	* v0.9 fix & improve admin interface (by Pai-Wei)
 
 2014-11-12  Baris Metin  <bmetin@yelp.com>
 
