@@ -1,4 +1,7 @@
+import gc
 import multiprocessing
+
+import mock
 import pytest
 import pygear
 
@@ -56,3 +59,10 @@ def test_job_methods(c):
     worker_thread.start()
     c.run_tasks()
     worker_thread.join()
+
+
+def test_gc_traversal():
+    j = pygear.Job()
+    sentinel = mock.Mock()
+    j.set_serializer(sentinel)
+    assert sentinel in gc.get_referents(j)

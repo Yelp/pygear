@@ -1,3 +1,6 @@
+import gc
+
+import mock
 import pytest
 import pygear
 
@@ -152,3 +155,9 @@ def test_client_error(c):
     c.errno()
     c.error()
     c.error_code()
+
+
+def test_gc_traversal(c):
+    sentinel = mock.Mock()
+    c.set_complete_fn(sentinel)
+    assert sentinel in gc.get_referents(c)

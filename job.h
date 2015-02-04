@@ -50,12 +50,13 @@ typedef struct {
 PyDoc_STRVAR(job_module_docstring, "Represents a Gearman job");
 
 /* Class init methods */
-PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds);
+int Job_traverse(pygear_JobObject *self,  visitproc visit, void *arg);
+int Job_clear(pygear_JobObject* self);
 void Job_dealloc(pygear_JobObject* self);
 
-/* Method definitions */
 
+/* Method definitions */
 static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_job_send_data_doc,
 "Send data for a running job.\n"
@@ -158,10 +159,12 @@ PyTypeObject pygear_JobType = {
     0,                                          /*tp_getattro*/
     0,                                          /*tp_setattro*/
     0,                                          /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /*tp_flags*/
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_BASETYPE |
+    Py_TPFLAGS_HAVE_GC,                         /*tp_flags*/
     job_module_docstring,                       /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
+    (traverseproc)Job_traverse,                 /* tp_traverse */
+    (inquiry)Job_clear,                         /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
@@ -175,8 +178,6 @@ PyTypeObject pygear_JobType = {
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
     (initproc)Job_init,                         /* tp_init */
-    0,                                          /* tp_alloc */
-    Job_new,                                    /* tp_new */
 };
 
 #endif

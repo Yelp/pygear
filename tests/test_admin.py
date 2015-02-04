@@ -18,6 +18,12 @@ class TestPygearAdminCommands(object):
             self.admin = pygear.Admin(self.sb_host, self.sb_port)
             yield
 
+    def test_defaults_from_new(self):
+        admin = pygear.Admin.__new__(pygear.Admin)
+        assert admin.info()['host'] is None
+        assert admin.info()['port'] == 4730
+        assert admin.info()['timeout'] == 60
+
     def test_admin_status(self):
         assert self.admin.status() == []
 

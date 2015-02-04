@@ -60,8 +60,9 @@ typedef struct {
 PyDoc_STRVAR(client_module_docstring, "Represents a Gearman client.");
 
 /* Class init methods */
-PyObject* Client_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Client_init(pygear_ClientObject *self, PyObject *args, PyObject *kwds);
+int Client_traverse(pygear_ClientObject *self, visitproc visit, void *arg);
+int Client_clear(pygear_ClientObject *self);
 void Client_dealloc(pygear_ClientObject* self);
 
 
@@ -463,10 +464,12 @@ PyTypeObject pygear_ClientType = {
     0,                                          /*tp_getattro*/
     0,                                          /*tp_setattro*/
     0,                                          /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /*tp_flags*/
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_BASETYPE |
+    Py_TPFLAGS_HAVE_GC,                         /*tp_flags*/
     client_module_docstring,                    /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
+    (traverseproc)Client_traverse,              /* tp_traverse */
+    (inquiry)Client_clear,                      /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
@@ -480,8 +483,6 @@ PyTypeObject pygear_ClientType = {
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
     (initproc)Client_init,                      /* tp_init */
-    0,                                          /* tp_alloc */
-    Client_new,                                 /* tp_new */
 };
 
 #endif
