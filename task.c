@@ -44,12 +44,24 @@ int Task_init(pygear_TaskObject* self, PyObject* args, PyObject* kwds) {
     return 0;
 }
 
+int Task_traverse(pygear_TaskObject* self, visitproc visit, void* arg)
+{
+    Py_VISIT(self->serializer);
+    return 0;
+}
+
+int Task_clear(pygear_TaskObject* self)
+{
+    Py_CLEAR(self->serializer);
+    return 0;
+}
+
 void Task_dealloc(pygear_TaskObject* self) {
     if (self->g_Task) {
         gearman_task_free(self->g_Task);
         self->g_Task = NULL;
     }
-    Py_XDECREF(self->serializer);
+    Task_clear(self);
     self->ob_type->tp_free((PyObject*)self);
 }
 

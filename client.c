@@ -57,23 +57,42 @@ int Client_init(pygear_ClientObject* self, PyObject* args, PyObject*kwds) {
     return 0;
 }
 
+int Client_traverse(pygear_ClientObject* self, visitproc visit, void* arg)
+{
+    Py_VISIT(self->cb_workload);
+    Py_VISIT(self->cb_created);
+    Py_VISIT(self->cb_data);
+    Py_VISIT(self->cb_warning);
+    Py_VISIT(self->cb_status);
+    Py_VISIT(self->cb_complete);
+    Py_VISIT(self->cb_exception);
+    Py_VISIT(self->cb_fail);
+    Py_VISIT(self->cb_log);
+    Py_VISIT(self->serializer);
+    return 0;
+}
+
+int Client_clear(pygear_ClientObject* self)
+{
+    Py_CLEAR(self->cb_workload);
+    Py_CLEAR(self->cb_created);
+    Py_CLEAR(self->cb_data);
+    Py_CLEAR(self->cb_warning);
+    Py_CLEAR(self->cb_status);
+    Py_CLEAR(self->cb_complete);
+    Py_CLEAR(self->cb_exception);
+    Py_CLEAR(self->cb_fail);
+    Py_CLEAR(self->cb_log);
+    Py_CLEAR(self->serializer);
+    return 0;
+}
 
 void Client_dealloc(pygear_ClientObject* self) {
     if (self->g_Client) {
         gearman_client_free(self->g_Client);
         self->g_Client = NULL;
     }
-    // Decrement the reference count for callback functions, if they are set
-    Py_XDECREF(self->cb_workload);
-    Py_XDECREF(self->cb_created);
-    Py_XDECREF(self->cb_data);
-    Py_XDECREF(self->cb_warning);
-    Py_XDECREF(self->cb_status);
-    Py_XDECREF(self->cb_complete);
-    Py_XDECREF(self->cb_exception);
-    Py_XDECREF(self->cb_fail);
-    Py_XDECREF(self->cb_log);
-    Py_XDECREF(self->serializer);
+    Client_clear(self);
     self->ob_type->tp_free((PyObject*)self);
 }
 

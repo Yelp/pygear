@@ -58,14 +58,26 @@ int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
     return 0;
 }
 
+int Worker_traverse(pygear_WorkerObject *self,  visitproc visit, void *arg) {
+    Py_VISIT(self->g_FunctionMap);
+    Py_VISIT(self->serializer);
+    Py_VISIT(self->cb_log);
+    return 0;
+}
+
+int Worker_clear(pygear_WorkerObject* self) {
+    Py_CLEAR(self->g_FunctionMap);
+    Py_CLEAR(self->serializer);
+    Py_CLEAR(self->cb_log);
+    return 0;
+}
+
 void Worker_dealloc(pygear_WorkerObject* self) {
     if (self->g_Worker) {
         gearman_worker_free(self->g_Worker);
         self->g_Worker = NULL;
     }
-    Py_XDECREF(self->g_FunctionMap);
-    Py_XDECREF(self->serializer);
-    Py_XDECREF(self->cb_log);
+    Worker_clear(self);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -659,7 +671,7 @@ catch:
         *ret_ptr = GEARMAN_SUCCESS;
     } else if (retptr == FAIL) {
         *ret_ptr = GEARMAN_FAIL;
-    } else { 
+    } else {
         // ret_ptr remain unchanged, same as input
     }
     return NULL;

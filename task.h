@@ -50,6 +50,8 @@ PyDoc_STRVAR(task_module_docstring, "Represents a Gearman task");
 
 /* Class init methods */
 int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds);
+int Task_traverse(pygear_TaskObject *self,  visitproc visit, void *arg);
+int Task_clear(pygear_TaskObject* self);
 void Task_dealloc(pygear_TaskObject* self);
 
 /* Method definitions */
@@ -150,10 +152,12 @@ PyTypeObject pygear_TaskType = {
     0,                                          /*tp_getattro*/
     0,                                          /*tp_setattro*/
     0,                                          /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /*tp_flags*/
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_BASETYPE |
+    Py_TPFLAGS_HAVE_GC,                         /*tp_flags*/
     task_module_docstring,                      /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
+    (traverseproc)Task_traverse,                /* tp_traverse */
+    (inquiry)Task_clear,                        /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */

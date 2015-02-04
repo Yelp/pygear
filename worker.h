@@ -52,6 +52,8 @@ PyDoc_STRVAR(worker_module_docstring, "Represents a Gearman worker.");
 
 /* Class init methods */
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds);
+int Worker_traverse(pygear_WorkerObject *self,  visitproc visit, void *arg);
+int Worker_clear(pygear_WorkerObject* self);
 void Worker_dealloc(pygear_WorkerObject* self);
 
 /* Private methods */
@@ -307,10 +309,12 @@ PyTypeObject pygear_WorkerType = {
     0,                                          /*tp_getattro*/
     0,                                          /*tp_setattro*/
     0,                                          /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /*tp_flags*/
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_BASETYPE |
+    Py_TPFLAGS_HAVE_GC,                         /*tp_flags*/
     worker_module_docstring,                    /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
+    (traverseproc)Worker_traverse,              /* tp_traverse */
+    (inquiry)Worker_clear,                      /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */

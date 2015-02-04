@@ -1,3 +1,6 @@
+import gc
+
+import mock
 import pytest
 import pygear
 
@@ -61,3 +64,9 @@ def test_task_strstate(t):
 
 def test_task_unique(t):
     assert t.unique() is None
+
+
+def test_gc_traversal(t):
+    sentinel = mock.Mock()
+    t.set_serializer(sentinel)
+    assert sentinel in gc.get_referents(t)

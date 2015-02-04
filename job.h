@@ -51,6 +51,8 @@ PyDoc_STRVAR(job_module_docstring, "Represents a Gearman job");
 
 /* Class init methods */
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds);
+int Job_traverse(pygear_JobObject *self,  visitproc visit, void *arg);
+int Job_clear(pygear_JobObject* self);
 void Job_dealloc(pygear_JobObject* self);
 
 
@@ -157,10 +159,12 @@ PyTypeObject pygear_JobType = {
     0,                                          /*tp_getattro*/
     0,                                          /*tp_setattro*/
     0,                                          /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /*tp_flags*/
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_BASETYPE |
+    Py_TPFLAGS_HAVE_GC,                         /*tp_flags*/
     job_module_docstring,                       /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
+    (traverseproc)Job_traverse,                 /* tp_traverse */
+    (inquiry)Job_clear,                         /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */

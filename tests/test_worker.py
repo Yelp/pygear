@@ -1,3 +1,6 @@
+import gc
+
+import mock
 import pytest
 import pygear
 
@@ -138,3 +141,17 @@ def test_worker_misc(w):
     w.id()
     w.error()
     w.errno()
+
+
+def test_gc_traversal(w):
+    sentinel = mock.Mock()
+    w.set_serializer(sentinel)
+    assert sentinel in gc.get_referents(w)
+
+    sentinel = mock.Mock()
+    w.set_log_fn(sentinel, 0)
+    assert sentinel in gc.get_referents(w)
+
+    w.add_function("test_method", 60, echo_function)
+    print gc.get_referents(w)
+    assert {'test_method': echo_function} in gc.get_referents(w)
