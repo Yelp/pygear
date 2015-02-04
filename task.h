@@ -49,7 +49,6 @@ typedef struct {
 PyDoc_STRVAR(task_module_docstring, "Represents a Gearman task");
 
 /* Class init methods */
-PyObject* Task_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Task_init(pygear_TaskObject *self, PyObject *args, PyObject *kwds);
 void Task_dealloc(pygear_TaskObject* self);
 
@@ -168,8 +167,6 @@ PyTypeObject pygear_TaskType = {
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
     (initproc)Task_init,                        /* tp_init */
-    0,                                          /* tp_alloc */
-    Task_new,                                   /* tp_new */
 };
 
 #endif

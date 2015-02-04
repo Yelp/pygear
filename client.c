@@ -32,16 +32,6 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Client_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    pygear_ClientObject* self;
-    self = (pygear_ClientObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        self->g_Client = NULL;
-    }
-    return (PyObject *)self;
-}
-
-
 int Client_init(pygear_ClientObject* self, PyObject* args, PyObject*kwds) {
     self->g_Client = gearman_client_create(NULL);
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);

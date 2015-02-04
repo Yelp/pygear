@@ -32,16 +32,6 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Job_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    pygear_JobObject* self;
-    self = (pygear_JobObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        self->g_Job = NULL;
-    }
-    self->serializer = NULL;
-    return (PyObject *)self;
-}
-
 int Job_init(pygear_JobObject* self, PyObject* args, PyObject* kwds) {
     self->g_Job = NULL;
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);

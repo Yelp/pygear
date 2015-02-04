@@ -50,12 +50,11 @@ typedef struct {
 PyDoc_STRVAR(job_module_docstring, "Represents a Gearman job");
 
 /* Class init methods */
-PyObject* Job_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Job_init(pygear_JobObject *self, PyObject *args, PyObject *kwds);
 void Job_dealloc(pygear_JobObject* self);
 
-/* Method definitions */
 
+/* Method definitions */
 static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_job_send_data_doc,
 "Send data for a running job.\n"
@@ -175,8 +174,6 @@ PyTypeObject pygear_JobType = {
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
     (initproc)Job_init,                         /* tp_init */
-    0,                                          /* tp_alloc */
-    Job_new,                                    /* tp_new */
 };
 
 #endif

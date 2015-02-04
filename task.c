@@ -32,15 +32,6 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Task_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    pygear_TaskObject* self;
-    self = (pygear_TaskObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        self->g_Task = NULL;
-    }
-    return (PyObject *)self;
-}
-
 int Task_init(pygear_TaskObject* self, PyObject* args, PyObject* kwds) {
     self->serializer = PyImport_ImportModule(PYTHON_SERIALIZER);
     if (self->serializer == NULL) {

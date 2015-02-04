@@ -56,7 +56,6 @@ PyMODINIT_FUNC initpygear(void) {
         return;
     }
 
-    pygear_AdminType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pygear_AdminType) < 0) {
         return;
     }

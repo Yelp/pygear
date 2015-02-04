@@ -51,7 +51,6 @@ typedef struct {
 PyDoc_STRVAR(worker_module_docstring, "Represents a Gearman worker.");
 
 /* Class init methods */
-PyObject* Worker_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Worker_init(pygear_WorkerObject *self, PyObject *args, PyObject *kwds);
 void Worker_dealloc(pygear_WorkerObject* self);
 
@@ -325,8 +324,6 @@ PyTypeObject pygear_WorkerType = {
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
     (initproc)Worker_init,                      /* tp_init */
-    0,                                          /* tp_alloc */
-    Worker_new,                                 /* tp_new */
 };
 
 #endif

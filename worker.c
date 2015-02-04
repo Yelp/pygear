@@ -32,16 +32,6 @@
  * Class constructor / destructor methods
  */
 
-PyObject* Worker_new(PyTypeObject* type, PyObject* args, PyObject* kwds) {
-    pygear_WorkerObject* self = NULL;
-    self = (pygear_WorkerObject *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        self->g_Worker = NULL;
-        self->g_FunctionMap = NULL;
-    }
-    return (PyObject *)self;
-}
-
 /* Return -1 if fail, 0 if success */
 int Worker_init(pygear_WorkerObject* self, PyObject* args, PyObject* kwds) {
     self->g_Worker = gearman_worker_create(NULL);
