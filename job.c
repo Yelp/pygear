@@ -137,7 +137,7 @@ static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args)
 
 static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args) {
     unsigned numerator, denominator;
-    if (!PyArg_ParseTuple(args, "II", &numerator, &denominator)) {
+    if (!PyArg_ParseTuple(args, "II", &numerator, &denominator)) {  // I : unsigned int
         return NULL;
     }
     gearman_return_t result = gearman_job_send_status(self->g_Job, numerator, denominator);

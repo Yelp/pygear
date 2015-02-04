@@ -1,13 +1,14 @@
 from optparse import OptionParser
+import time
 
 
 def parser_base():
     usage = 'usage: %prog [options] arg'
     parser = OptionParser(usage)
     parser.add_option('-p', '--port', type='int', dest='server_port', default=4730,
-        help='set server port (default 4730)')
+                      help='set server port (default 4730)')
     parser.add_option('-H', '--host', dest='server_host', default='localhost',
-        help='set server host (default \'localhost\')')
+                      help='set server host (default \'localhost\')')
     return parser
 
 
@@ -16,9 +17,9 @@ def parse_options_and_args(my_type):
 
     if my_type == 'worker':
         parser.add_option('-s', '--seconds', type='int', dest='seconds', default=10,
-            help='set the seconds this worker will run (default 10)')
+                          help='set the seconds this worker will run (default 10)')
         parser.add_option('-l', '--logging', action='store_true', dest='logging', default=False,
-            help='turn on set_log_fn to print the exception lines')
+                          help='turn on set_log_fn to print the exception lines')
 
     elif my_type == 'client':
         parser.add_option("-s", "--seconds", type="int", dest="seconds", default=0,
@@ -42,13 +43,23 @@ def parse_options_and_args(my_type):
     return parser.parse_args()
 
 
-def reverse(job):
-    print job.workload()
+def test_reverse(job):
+    print "Test reverse - %s %s" % (job.handle(), job.workload())
     return job.workload()[::-1]
 
 
-def echo(job):
-    print job.workload()
+def test_echo(job):
+    print "Test echo - %s %s" % (job.handle(), job.workload())
+    return job.workload()
+
+
+def test_job_status(job):
+    print 'Test job status - %s %s' % (job.handle(), job.workload())
+    job.send_status(0, 100)  # 0 %
+    time.sleep(1)
+    job.send_status(50,100)  # 50 %
+    time.sleep(1)
+    job.send_status(100, 100)  # 100 %
     return job.workload()
 
 

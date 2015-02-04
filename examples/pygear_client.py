@@ -27,6 +27,12 @@ def main():
             timeout_millis = opts.timeout * 1000
             c.set_timeout(timeout_millis)
 
+    task = None
+    tasks = []
+    job_handle = None
+    job_handles = []
+    result = None
+
     n = 0
     if opts.seconds > 0:
         while time.time() < stop_time:
@@ -34,16 +40,19 @@ def main():
             unique = uuid.uuid4().hex
             if opts.async:
                 if opts.background:
-                    res = c.add_task_background('reverse', data, unique)
+                    task = c.add_task_background('test_job_status', data, unique)
+                    tasks.append(task)
                 else:
-                    res = c.add_task('reverse', data, unique)
+                    task = c.add_task('test_job_status', data, unique)
+                    tasks.append(task)
             else:
                 if opts.background:
-                    res = c.do_background('reverse', data, unique)
+                    job_handle = c.do_background('test_job_status', data, unique)
+                    job_handles.append(job_handle)
                 else:
-                    res = c.do('reverse', data, unique)
+                    result = c.do('test_job_status', data, unique)
             if not opts.quiet:
-                print res
+                print task or job_handle or result
             n += 1
 
     elif opts.num_of_tasks > 0:
@@ -53,22 +62,38 @@ def main():
             unique = uuid.uuid4().hex
             if opts.async:
                 if opts.background:
-                    res = c.add_task_background('reverse', data, unique)
+                    task = c.add_task_background('test_job_status', data, unique)
+                    tasks.append(task)
                 else:
-                    res = c.add_task('reverse', data, unique)
+                    task = c.add_task('test_job_status', data, unique)
+                    tasks.append(task)
             else:
                 if opts.background:
-                    res = c.do_background('reverse', data, unique)
+                    job_handle = c.do_background('test_job_status', data, unique)
+                    job_handles.append(job_handle)
                 else:
-                    res = c.do('reverse', data, unique)
+                    result = c.do('test_job_status', data, unique)
             if not opts.quiet:
-                print res
+                print task or job_handle or result
     else:
         print 'Number of seconds or tasks unspecified. No job was sent.'
 
     if opts.async:
         print 'Run all tasks from the client queue together.'
+        print 'Run tasks!'
         c.run_tasks()
+        print 'Finish run tasks!'
+        if opts.background:
+            jh = task.job_handle()
+            print 'jh:', jh
+            time_start = time.time()
+            while time.time() < time_start + 3:
+                status = c.job_status(jh)
+                print(status)
+                time.sleep(0.1)
+                if not status['is_known']:
+                    print task.result()  # this will always be None because it is a background job
+                    break
 
     print '[PyGear Client] Total %s tasks processed.' % n
     if opts.background:
