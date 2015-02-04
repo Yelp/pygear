@@ -1,13 +1,16 @@
+2015-02-04 Baris Metin <bmetin@yelp.com>
+
+	* v0.9.2 Add garbage collector methods to pygear objects (@kmosher)
 2015-01-29 Baris Metin <bmetin@yelp.com>
 
 	* v0.9.1 start following semver-like versions
-	* Fix library path (by Pai-Wei)
+	* Fix library path (@paiweilai1984)
 
 2014-11-19  Baris Metin  <bmetin@yelp.com>
 
-	* v0.9 fix & improve admin interface (by Pai-Wei)
+	* v0.9 fix & improve admin interface (@paiweilai1984)
 
 2014-11-12  Baris Metin  <bmetin@yelp.com>
 
 	* v0.8
-	* Fix memory leaks & code re-org (by Pai-Wei)
+	* Fix memory leaks & code re-org (@paiweilai1984)
