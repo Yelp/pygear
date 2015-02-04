@@ -57,8 +57,7 @@ int Client_init(pygear_ClientObject* self, PyObject* args, PyObject*kwds) {
     return 0;
 }
 
-int Client_traverse(pygear_ClientObject* self, visitproc visit, void* arg)
-{
+int Client_traverse(pygear_ClientObject* self, visitproc visit, void* arg) {
     Py_VISIT(self->cb_workload);
     Py_VISIT(self->cb_created);
     Py_VISIT(self->cb_data);
@@ -72,8 +71,7 @@ int Client_traverse(pygear_ClientObject* self, visitproc visit, void* arg)
     return 0;
 }
 
-int Client_clear(pygear_ClientObject* self)
-{
+int Client_clear(pygear_ClientObject* self) {
     Py_CLEAR(self->cb_workload);
     Py_CLEAR(self->cb_created);
     Py_CLEAR(self->cb_data);

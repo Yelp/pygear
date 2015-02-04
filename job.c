@@ -44,14 +44,12 @@ int Job_init(pygear_JobObject* self, PyObject* args, PyObject* kwds) {
     return 0;
 }
 
-int Job_traverse(pygear_JobObject* self, visitproc visit, void* arg)
-{
+int Job_traverse(pygear_JobObject* self, visitproc visit, void* arg) {
     Py_VISIT(self->serializer);
     return 0;
 }
 
-int Job_clear(pygear_JobObject* self)
-{
+int Job_clear(pygear_JobObject* self) {
     Py_CLEAR(self->serializer);
     return 0;
 }

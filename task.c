@@ -44,14 +44,12 @@ int Task_init(pygear_TaskObject* self, PyObject* args, PyObject* kwds) {
     return 0;
 }
 
-int Task_traverse(pygear_TaskObject* self, visitproc visit, void* arg)
-{
+int Task_traverse(pygear_TaskObject* self, visitproc visit, void* arg) {
     Py_VISIT(self->serializer);
     return 0;
 }
 
-int Task_clear(pygear_TaskObject* self)
-{
+int Task_clear(pygear_TaskObject* self) {
     Py_CLEAR(self->serializer);
     return 0;
 }
