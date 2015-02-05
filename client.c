@@ -54,6 +54,7 @@ int Client_init(pygear_ClientObject* self, PyObject* args, PyObject*kwds) {
     self->cb_complete = NULL;
     self->cb_exception = NULL;
     self->cb_fail = NULL;
+    self->cb_log = NULL;
     return 0;
 }
 
@@ -593,16 +594,16 @@ static PyObject* pygear_client_run_tasks(pygear_ClientObject* self) {
 
 #define CALLBACK_SETTER(CB) static PyObject* pygear_client_set_##CB##_fn(pygear_ClientObject* self, PyObject* args) { \
     PyObject* callback_fn; \
+    PyObject* tmp; \
     if (!PyArg_ParseTuple(args, "O", &callback_fn)) { \
         return NULL; \
     } \
+    tmp = self->cb_##CB; \
     Py_INCREF(callback_fn); \
-    if (self->cb_##CB) { \
-        Py_DECREF(self->cb_##CB); \
-    } \
     self->cb_##CB = callback_fn; \
-    gearman_client_set_##CB##_fn(self->g_Client, pygear_client_wrap_callback_##CB);\
-    Py_RETURN_NONE; \
+    gearman_client_set_##CB##_fn(self->g_Client, pygear_client_wrap_callback_##CB); \
+    Py_XDECREF(tmp); \
+    Py_RETURN_NONE;  \
 }
 
 #define CALLBACK_HANDLE(CB) CALLBACK_WRAPPER(CB) CALLBACK_SETTER(CB)
@@ -628,14 +629,16 @@ static void _pygear_client_log_fn_wrapper(const char* line, gearman_verbose_t ve
 
 static PyObject* pygear_client_set_log_fn(pygear_ClientObject* self, PyObject* args) {
     PyObject* function;
+    PyObject* tmp;
     gearman_verbose_t verbose;
     if (!PyArg_ParseTuple(args, "Oi", &function, &verbose)) {
         return NULL;
     }
+    tmp = self->cb_log;
     Py_INCREF(function);
-    Py_XDECREF(self->cb_log);
     self->cb_log = function;
     gearman_client_set_log_fn(self->g_Client, _pygear_client_log_fn_wrapper, self, verbose);
+    Py_XDECREF(tmp);
     Py_RETURN_NONE;
 }
 
@@ -678,6 +681,7 @@ static PyObject* pygear_client_set_options(pygear_ClientObject* self, PyObject* 
 
 static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObject* args) {
     PyObject* serializer;
+    PyObject* tmp;
     if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
@@ -689,9 +693,10 @@ static PyObject* pygear_client_set_serializer(pygear_ClientObject* self, PyObjec
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
+    tmp = self->serializer;
     Py_INCREF(serializer);
-    Py_XDECREF(self->serializer);
     self->serializer = serializer;
+    Py_XDECREF(tmp);
     Py_RETURN_NONE;
 }
 

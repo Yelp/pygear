@@ -367,15 +367,16 @@ static void _pygear_worker_log_fn_wrapper(const char* line, gearman_verbose_t ve
 
 static PyObject* pygear_worker_set_log_fn(pygear_WorkerObject* self, PyObject* args) {
     PyObject* function;
+    PyObject* tmp;
     gearman_verbose_t verbose;
     if (!PyArg_ParseTuple(args, "Oi", &function, &verbose)) {
         return NULL;
     }
+    tmp = self->cb_log;
     Py_INCREF(function);
-    Py_XDECREF(self->cb_log);
     self->cb_log = function;
     gearman_worker_set_log_fn(self->g_Worker, _pygear_worker_log_fn_wrapper, self, verbose);
-    Py_DECREF(function);
+    Py_XDECREF(tmp);
     Py_RETURN_NONE;
 }
 
@@ -448,6 +449,7 @@ static PyObject* pygear_worker_set_options(pygear_WorkerObject* self, PyObject* 
 
 static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObject* args) {
     PyObject* serializer = NULL;
+    PyObject* tmp;
     if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
@@ -459,9 +461,10 @@ static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObjec
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
+    tmp = self->serializer;
     Py_INCREF(serializer);
-    Py_XDECREF(self->serializer);  // dealloc the old one
     self->serializer = serializer;
+    Py_XDECREF(tmp);
     Py_RETURN_NONE;
 }
 

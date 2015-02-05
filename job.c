@@ -69,6 +69,7 @@ void Job_dealloc(pygear_JobObject* self) {
 
 static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* args) {
     PyObject* serializer;
+    PyObject* tmp;
     if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
@@ -80,9 +81,10 @@ static PyObject* pygear_job_set_serializer(pygear_JobObject* self, PyObject* arg
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
+    tmp = self->serializer;
     Py_INCREF(serializer);
-    Py_XDECREF(self->serializer);
     self->serializer = serializer;
+    Py_XDECREF(tmp);
     Py_RETURN_NONE;
 }
 

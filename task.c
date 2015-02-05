@@ -113,6 +113,7 @@ static PyObject* pygear_task_data_size(pygear_TaskObject* self) {
 
 static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* args) {
     PyObject* serializer;
+    PyObject* tmp;
     if (!PyArg_ParseTuple(args, "O", &serializer)) {
         return NULL;
     }
@@ -124,9 +125,10 @@ static PyObject* pygear_task_set_serializer(pygear_TaskObject* self, PyObject* a
         PyErr_SetString(PyExc_AttributeError, "Serializer does not implement 'dumps'");
         return NULL;
     }
+    tmp = self->serializer;
     Py_INCREF(serializer);
-    Py_XDECREF(self->serializer);
     self->serializer = serializer;
+    Py_XDECREF(tmp);
     Py_RETURN_NONE;
 }
 
