@@ -92,11 +92,9 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
     if (!PyArg_ParseTuple(args, "siO", &function_name, &timeout, &function)) {
         return NULL;
     }
-    Py_INCREF(function);
-    PyObject* function_name_str = PyString_FromString(function_name);
-    PyDict_SetItem(self->g_FunctionMap, function_name_str, function);
-    Py_DECREF(function_name_str);
-    Py_DECREF(function);
+    if (PyDict_SetItemString(self->g_FunctionMap, function_name, function)) {
+        return NULL;
+    }
     gearman_return_t result = gearman_worker_add_function(
         self->g_Worker,
         function_name,
@@ -163,16 +161,18 @@ catch:
 
 
 static PyObject* pygear_worker_clone(pygear_WorkerObject* self) {
-    PyObject *argList = NULL;
-    pygear_WorkerObject* python_worker = NULL;
-    PyObject* ret = NULL;
-    argList = Py_BuildValue("(O, O)", Py_None, Py_None);
-    python_worker = (pygear_WorkerObject*) PyObject_CallObject((PyObject *) &pygear_WorkerType, argList);
-    python_worker->g_Worker = gearman_worker_clone(NULL, self->g_Worker);
-    ret = Py_BuildValue("O", python_worker); // build new reference to return
-    Py_XDECREF(argList);
-    Py_XDECREF(python_worker);
-    return ret;
+    pygear_WorkerObject* cloned_worker = NULL;
+    cloned_worker = (pygear_WorkerObject* )self->ob_type->tp_new(&pygear_WorkerType, NULL, NULL);
+    if (cloned_worker == NULL) {
+      return NULL;
+    }
+    cloned_worker->g_Worker = gearman_worker_clone(NULL, self->g_Worker);
+    Py_XINCREF(self->serializer);
+    cloned_worker->serializer = self->serializer;
+    Py_XINCREF(self->cb_log);
+    cloned_worker->serializer = self->cb_log;
+    cloned_worker->g_FunctionMap = PyDict_Copy(self->g_FunctionMap);
+    return (PyObject *)cloned_worker;
 }
 
 
@@ -702,6 +702,12 @@ static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* a
     if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
+    if (PyDict_DelItemString(self->g_FunctionMap, function_name)) {
+        /* Ignore KeyErrors */
+        if (PyErr_ExceptionMatches(PyExc_KeyError)) {
+            PyErr_Clear();
+        }
+    }
     Py_RETURN_NONE;
 }
 
@@ -711,5 +717,6 @@ static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self) {
     if (_pygear_check_and_raise_exn(result)) {
         return NULL;
     }
+    PyDict_Clear(self->g_FunctionMap);
     Py_RETURN_NONE;
 }
