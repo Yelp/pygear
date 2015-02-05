@@ -307,12 +307,6 @@ static PyObject* pygear_worker_id(pygear_WorkerObject* self) {
 }
 
 
-static PyObject* pygear_worker_job_free_all(pygear_WorkerObject* self) {
-    gearman_job_free_all(self->g_Worker);
-    Py_RETURN_NONE;
-}
-
-
 static PyObject* pygear_worker_namespace(pygear_WorkerObject* self) {
     const char* namespace = gearman_worker_namespace(self->g_Worker);
     return PyString_FromString(namespace);

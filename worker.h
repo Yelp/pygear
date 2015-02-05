@@ -148,10 +148,6 @@ PyDoc_STRVAR(pygear_worker_id_doc,
 "Get the ID of the worker.\n\n"
 "@return integer.");
 
-static PyObject* pygear_worker_job_free_all(pygear_WorkerObject* self);
-PyDoc_STRVAR(pygear_worker_job_free_all_doc,
-"Free all jobs for this worker.");
-
 static PyObject* pygear_worker_namespace(pygear_WorkerObject* self);
 PyDoc_STRVAR(pygear_worker_namespace_doc,
 "Get the current namespace of the worker. Only clients and workers sharing\n"
@@ -274,7 +270,6 @@ static PyMethodDef worker_module_methods[] = {
     _WORKERMETHOD(unregister,       METH_VARARGS)
     _WORKERMETHOD(unregister_all,   METH_NOARGS)
     _WORKERMETHOD(grab_job,         METH_NOARGS)
-    _WORKERMETHOD(job_free_all,     METH_NOARGS)
     _WORKERMETHOD(function_exists,  METH_VARARGS)
     _WORKERMETHOD(add_function,     METH_VARARGS)
     _WORKERMETHOD(work,             METH_NOARGS)
