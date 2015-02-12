@@ -104,7 +104,7 @@ static PyObject* pygear_worker_add_function(pygear_WorkerObject* self, PyObject*
         _pygear_worker_function_mapper,
         self
     );
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -118,7 +118,7 @@ static PyObject* pygear_worker_add_server(pygear_WorkerObject* self, PyObject* a
         return NULL;
     }
     gearman_return_t result = gearman_worker_add_server(self->g_Worker, host, port);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -148,7 +148,7 @@ static PyObject* pygear_worker_add_servers(pygear_WorkerObject* self, PyObject* 
     for (i = 0; i < num_servers; ++i) {
         char* server_string = PyString_AsString(PyList_GetItem(servers_list, i));
         gearman_return_t result = gearman_worker_add_servers(self->g_Worker, server_string);
-        if (_pygear_check_and_raise_exn(result)) {
+        if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
             goto catch;
         }
     }
@@ -187,7 +187,7 @@ static PyObject* pygear_worker_echo(pygear_WorkerObject* self, PyObject* args) {
         workload,
         workload_size
     );
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -274,7 +274,7 @@ static PyObject* pygear_worker_grab_job(pygear_WorkerObject* self) {
     pygear_JobObject* python_job = NULL;
     PyObject* callmethod_result = NULL;
     PyObject* ret = NULL;
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         goto catch;
     }
     argList = Py_BuildValue("(O, O)", Py_None, Py_None);
@@ -326,7 +326,7 @@ static PyObject* pygear_worker_register(pygear_WorkerObject* self, PyObject* arg
         return NULL;
     }
     gearman_return_t result = gearman_worker_register(self->g_Worker, function_name, timeout);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -346,7 +346,7 @@ static PyObject* pygear_worker_set_identifier(pygear_WorkerObject* self, PyObjec
         return NULL;
     }
     gearman_return_t result = gearman_worker_set_identifier(self->g_Worker, id, id_size);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -483,7 +483,7 @@ static PyObject* pygear_worker_timeout(pygear_WorkerObject* self) {
 
 static PyObject* pygear_worker_wait(pygear_WorkerObject* self) {
     gearman_return_t result = gearman_worker_wait(self->g_Worker);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -642,7 +642,7 @@ void* _pygear_worker_function_mapper(gearman_job_st* gear_job, void* context,
             Py_ssize_t len;
             char* buffer;
             PyString_AsStringAndSize(pickled_result, &buffer, &len);
-            if (_pygear_check_and_raise_exn(gearman_job_send_complete(gear_job, buffer, len))) {
+            if (_pygear_check_and_raise_exn(gearman_job_send_complete(gear_job, buffer, len), "Failed in gearman_job_send_complete")) {
                 PyErr_Print();
                 retptr = UNDEFINED;
             } else {
@@ -683,7 +683,7 @@ static PyObject* pygear_worker_work(pygear_WorkerObject* self) {
     if (PyErr_Occurred()) {
         return NULL;
     }
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -696,7 +696,7 @@ static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* a
         return NULL;
     }
     gearman_return_t result = gearman_worker_unregister(self->g_Worker, function_name);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -705,7 +705,7 @@ static PyObject* pygear_worker_unregister(pygear_WorkerObject* self, PyObject* a
 
 static PyObject* pygear_worker_unregister_all(pygear_WorkerObject* self) {
     gearman_return_t result = gearman_worker_unregister_all(self->g_Worker);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_worker_error(self->g_Worker))) {
         return NULL;
     }
     Py_RETURN_NONE;

@@ -105,7 +105,7 @@ static PyObject* pygear_job_send_data(pygear_JobObject* self, PyObject* args) {
     }
     Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_data(self->g_Job, c_data, c_data_size);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, "Failed in gearman_job_send_data")) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -129,7 +129,7 @@ static PyObject* pygear_job_send_warning(pygear_JobObject* self, PyObject* args)
     }
     Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_warning(self->g_Job, c_data, c_data_size);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, "Failed in gearman_job_send_warning")) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -141,7 +141,7 @@ static PyObject* pygear_job_send_status(pygear_JobObject* self, PyObject* args) 
         return NULL;
     }
     gearman_return_t result = gearman_job_send_status(self->g_Job, numerator, denominator);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, "Failed in gearman_job_send_status")) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -165,7 +165,7 @@ static PyObject* pygear_job_send_complete(pygear_JobObject* self, PyObject* args
     }
     Py_XDECREF(pickled_result); 
     gearman_return_t gearman_result = gearman_job_send_complete(self->g_Job, c_result, c_result_size);
-    if (_pygear_check_and_raise_exn(gearman_result)) {
+    if (_pygear_check_and_raise_exn(gearman_result, "Failed in gearman_job_send_complete")) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -190,7 +190,7 @@ static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* arg
     }
     Py_XDECREF(pickled_data);
     gearman_return_t result = gearman_job_send_exception(self->g_Job, c_data, c_data_size);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, "Failed in gearman_job_send_exception")) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -198,7 +198,7 @@ static PyObject* pygear_job_send_exception(pygear_JobObject* self, PyObject* arg
 
 static PyObject* pygear_job_send_fail(pygear_JobObject* self) {
     gearman_return_t result = gearman_job_send_fail(self->g_Job);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, "Failed in gearman_job_send_fail")) {
         return NULL;
     }
     Py_RETURN_NONE;
