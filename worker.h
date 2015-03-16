@@ -213,7 +213,7 @@ PyDoc_STRVAR(pygear_worker_set_options_doc,
 static PyObject* pygear_worker_set_serializer(pygear_WorkerObject* self, PyObject* args);
 PyDoc_STRVAR(pygear_worker_set_serializer_doc,
 "Specify the object to be used to serialize data passed through gearman.\n"
-"By default, pygear will use 'json' to convert data to a string\n"
+"By default, pygear will use 'simplejson' to convert data to a string\n"
 "representation during transit and reconstitute it on the other end.\n"
 "You can replace the serializer with your own as long as it implements\n"
 "the 'dumps' and 'loads' methods. 'dumps' must return a string, and loads\n"
