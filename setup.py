@@ -7,7 +7,6 @@ pygear = Extension(
     sources=["pygear.c"],
     runtime_library_dirs=["/usr/lib/"],  # libgearman7
     extra_link_args=["-l:libgearman.so.7"],
-    extra_compile_args=["-I/usr/local/include", "-I/usr/include/python2.6/"]
 )
 
 
