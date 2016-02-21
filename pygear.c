@@ -145,63 +145,63 @@ PyMODINIT_FUNC initpygear(void) {
     INIT_EXN(MAX_RETURN); /* Always add new error code before */
 }
 
-#define EXN_CASE_RAISE(EXN) \
+#define EXN_CASE_RAISE(EXN, ERR) \
 case GEARMAN_##EXN: { \
-    PyErr_SetString(PyGearExn_##EXN, #EXN); \
+    PyErr_SetString(PyGearExn_##EXN, ERR); \
     return 1; \
 }
 
-int _pygear_check_and_raise_exn(gearman_return_t returncode) {
+int _pygear_check_and_raise_exn(gearman_return_t returncode, const char* error) {
     switch (returncode) {
-        EXN_CASE_RAISE(SHUTDOWN);
-        EXN_CASE_RAISE(SHUTDOWN_GRACEFUL);
-        EXN_CASE_RAISE(ERRNO);
-        EXN_CASE_RAISE(EVENT); // DEPRECATED; SERVER ONLY
-        EXN_CASE_RAISE(TOO_MANY_ARGS);
-        EXN_CASE_RAISE(NO_ACTIVE_FDS); // No servers available
-        EXN_CASE_RAISE(INVALID_MAGIC);
-        EXN_CASE_RAISE(INVALID_COMMAND);
-        EXN_CASE_RAISE(INVALID_PACKET);
-        EXN_CASE_RAISE(UNEXPECTED_PACKET);
-        EXN_CASE_RAISE(GETADDRINFO);
-        EXN_CASE_RAISE(NO_SERVERS);
-        EXN_CASE_RAISE(LOST_CONNECTION);
-        EXN_CASE_RAISE(MEMORY_ALLOCATION_FAILURE);
-        EXN_CASE_RAISE(JOB_EXISTS); // see gearman_client_job_status()
-        EXN_CASE_RAISE(JOB_QUEUE_FULL);
-        EXN_CASE_RAISE(SERVER_ERROR);
-        EXN_CASE_RAISE(WORK_ERROR);
-        EXN_CASE_RAISE(WORK_DATA);
-        EXN_CASE_RAISE(WORK_WARNING);
-        EXN_CASE_RAISE(WORK_STATUS);
-        EXN_CASE_RAISE(WORK_EXCEPTION);
-        EXN_CASE_RAISE(WORK_FAIL);
-        EXN_CASE_RAISE(NOT_CONNECTED);
-        EXN_CASE_RAISE(COULD_NOT_CONNECT);
-        EXN_CASE_RAISE(SEND_IN_PROGRESS); // DEPRECATED; SERVER ONLY
-        EXN_CASE_RAISE(RECV_IN_PROGRESS); // DEPRECATED; SERVER ONLY
-        EXN_CASE_RAISE(NOT_FLUSHING);
-        EXN_CASE_RAISE(DATA_TOO_LARGE);
-        EXN_CASE_RAISE(INVALID_FUNCTION_NAME);
-        EXN_CASE_RAISE(INVALID_WORKER_FUNCTION);
-        EXN_CASE_RAISE(NO_REGISTERED_FUNCTION);
-        EXN_CASE_RAISE(NO_REGISTERED_FUNCTIONS);
-        EXN_CASE_RAISE(NO_JOBS);
-        EXN_CASE_RAISE(ECHO_DATA_CORRUPTION);
-        EXN_CASE_RAISE(NEED_WORKLOAD_FN);
-        EXN_CASE_RAISE(UNKNOWN_STATE);
-        EXN_CASE_RAISE(PTHREAD); // DEPRECATED; SERVER ONLY
-        EXN_CASE_RAISE(PIPE_EOF); // DEPRECATED; SERVER ONLY
-        EXN_CASE_RAISE(QUEUE_ERROR); // DEPRECATED; SERVER ONLY
-        EXN_CASE_RAISE(FLUSH_DATA); // Internal state
-        EXN_CASE_RAISE(SEND_BUFFER_TOO_SMALL);
-        EXN_CASE_RAISE(IGNORE_PACKET); // Internal only
-        EXN_CASE_RAISE(UNKNOWN_OPTION); // DEPRECATED
-        EXN_CASE_RAISE(TIMEOUT);
-        EXN_CASE_RAISE(ARGUMENT_TOO_LARGE);
-        EXN_CASE_RAISE(INVALID_ARGUMENT);
-        EXN_CASE_RAISE(INVALID_SERVER_OPTION); // Bad server option sent to server
-        EXN_CASE_RAISE(MAX_RETURN); /* Always add new error code before */
+        EXN_CASE_RAISE(SHUTDOWN, error);
+        EXN_CASE_RAISE(SHUTDOWN_GRACEFUL, error);
+        EXN_CASE_RAISE(ERRNO, error);
+        EXN_CASE_RAISE(EVENT, error); // DEPRECATED; SERVER ONLY
+        EXN_CASE_RAISE(TOO_MANY_ARGS, error);
+        EXN_CASE_RAISE(NO_ACTIVE_FDS, error); // No servers available
+        EXN_CASE_RAISE(INVALID_MAGIC, error);
+        EXN_CASE_RAISE(INVALID_COMMAND, error);
+        EXN_CASE_RAISE(INVALID_PACKET, error);
+        EXN_CASE_RAISE(UNEXPECTED_PACKET, error);
+        EXN_CASE_RAISE(GETADDRINFO, error);
+        EXN_CASE_RAISE(NO_SERVERS, error);
+        EXN_CASE_RAISE(LOST_CONNECTION, error);
+        EXN_CASE_RAISE(MEMORY_ALLOCATION_FAILURE, error);
+        EXN_CASE_RAISE(JOB_EXISTS, error); // see gearman_client_job_status()
+        EXN_CASE_RAISE(JOB_QUEUE_FULL, error);
+        EXN_CASE_RAISE(SERVER_ERROR, error);
+        EXN_CASE_RAISE(WORK_ERROR, error);
+        EXN_CASE_RAISE(WORK_DATA, error);
+        EXN_CASE_RAISE(WORK_WARNING, error);
+        EXN_CASE_RAISE(WORK_STATUS, error);
+        EXN_CASE_RAISE(WORK_EXCEPTION, error);
+        EXN_CASE_RAISE(WORK_FAIL, error);
+        EXN_CASE_RAISE(NOT_CONNECTED, error);
+        EXN_CASE_RAISE(COULD_NOT_CONNECT, error);
+        EXN_CASE_RAISE(SEND_IN_PROGRESS, error); // DEPRECATED; SERVER ONLY
+        EXN_CASE_RAISE(RECV_IN_PROGRESS, error); // DEPRECATED; SERVER ONLY
+        EXN_CASE_RAISE(NOT_FLUSHING, error);
+        EXN_CASE_RAISE(DATA_TOO_LARGE, error);
+        EXN_CASE_RAISE(INVALID_FUNCTION_NAME, error);
+        EXN_CASE_RAISE(INVALID_WORKER_FUNCTION, error);
+        EXN_CASE_RAISE(NO_REGISTERED_FUNCTION, error);
+        EXN_CASE_RAISE(NO_REGISTERED_FUNCTIONS, error);
+        EXN_CASE_RAISE(NO_JOBS, error);
+        EXN_CASE_RAISE(ECHO_DATA_CORRUPTION, error);
+        EXN_CASE_RAISE(NEED_WORKLOAD_FN, error);
+        EXN_CASE_RAISE(UNKNOWN_STATE, error);
+        EXN_CASE_RAISE(PTHREAD, error); // DEPRECATED; SERVER ONLY
+        EXN_CASE_RAISE(PIPE_EOF, error); // DEPRECATED; SERVER ONLY
+        EXN_CASE_RAISE(QUEUE_ERROR, error); // DEPRECATED; SERVER ONLY
+        EXN_CASE_RAISE(FLUSH_DATA, error); // Internal state
+        EXN_CASE_RAISE(SEND_BUFFER_TOO_SMALL, error);
+        EXN_CASE_RAISE(IGNORE_PACKET, error); // Internal only
+        EXN_CASE_RAISE(UNKNOWN_OPTION, error); // DEPRECATED
+        EXN_CASE_RAISE(TIMEOUT, error);
+        EXN_CASE_RAISE(ARGUMENT_TOO_LARGE, error);
+        EXN_CASE_RAISE(INVALID_ARGUMENT, error);
+        EXN_CASE_RAISE(INVALID_SERVER_OPTION, error); // Bad server option sent to server
+        EXN_CASE_RAISE(MAX_RETURN, error); /* Always add new error code before */
         default:
             return 0;
     }

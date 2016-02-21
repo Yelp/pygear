@@ -89,6 +89,6 @@ PyObject* PyGearExn_MAX_RETURN; /* Always add new error code before */
  *
  * Return: 0 on no error, 1 on error.
  */
-int _pygear_check_and_raise_exn(gearman_return_t return_code);
+int _pygear_check_and_raise_exn(gearman_return_t return_code, const char* error);
 
 #endif

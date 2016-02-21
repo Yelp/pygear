@@ -107,7 +107,7 @@ static PyObject* pygear_client_add_server(pygear_ClientObject* self, PyObject* a
         return NULL;
     }
     gearman_return_t result = gearman_client_add_server(self->g_Client, host, port);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_client_error(self->g_Client))) {
         return NULL;
     }
     // gearman_client_set_exception_fn() will only be called if exceptions are enabled on the server
@@ -139,7 +139,7 @@ static PyObject* pygear_client_add_servers(pygear_ClientObject* self, PyObject* 
     for (i = 0; i < num_servers; ++i) {
         char* server_string = PyString_AsString(PyList_GetItem(server_list, i));
         gearman_return_t result = gearman_client_add_servers(self->g_Client, server_string);
-        if (_pygear_check_and_raise_exn(result)) {
+        if (_pygear_check_and_raise_exn(result, gearman_client_error(self->g_Client))) {
             return NULL;
         }
     }
@@ -189,7 +189,7 @@ static PyObject* pygear_client_add_task##TASKTYPE(pygear_ClientObject* self, PyO
         workload_size, \
         &ret \
     ); \
-    if (_pygear_check_and_raise_exn(ret)) { \
+    if (_pygear_check_and_raise_exn(ret, gearman_client_error(self->g_Client))) { \
         return NULL; \
     } \
     /* Creating new python task */ \
@@ -233,7 +233,7 @@ static PyObject* pygear_client_add_task_status(pygear_ClientObject* self, PyObje
         job_handle,
         &gearman_return
     );
-    if (_pygear_check_and_raise_exn(gearman_return)) {
+    if (_pygear_check_and_raise_exn(gearman_return, gearman_client_error(self->g_Client))) {
         return NULL;
     }
     pygear_TaskObject* python_task = (pygear_TaskObject*) _PyObject_New(&pygear_TaskType);
@@ -310,7 +310,7 @@ static PyObject* pygear_client_do##DOTYPE(pygear_ClientObject* self, PyObject* a
         &result_size, \
         &ret); /* work_result must be freed later to avoid memory leak */ \
     Py_XDECREF(pickled_input); /* safely dealloc workload */ \
-    if (_pygear_check_and_raise_exn(ret)) { \
+    if (_pygear_check_and_raise_exn(ret, gearman_client_error(self->g_Client))) { \
         free(work_result); \
         return NULL; \
     } \
@@ -364,7 +364,7 @@ static PyObject* pygear_client_do##DOTYPE##_background(pygear_ClientObject* self
         job_handle \
     ); \
     Py_XDECREF(pickled_input); /* safely dealloc workload */ \
-    if (_pygear_check_and_raise_exn(work_result)) { \
+    if (_pygear_check_and_raise_exn(work_result, gearman_client_error(self->g_Client))) { \
         free(job_handle); \
         return NULL; \
     } \
@@ -400,7 +400,7 @@ static PyObject* pygear_client_echo(pygear_ClientObject* self, PyObject* args) {
         return NULL;
     }
     gearman_return_t result = gearman_client_echo(self->g_Client, workload, workload_len);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_client_error(self->g_Client))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -456,7 +456,7 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
         NULL // context
     );
     if (new_task == NULL) {
-        if (_pygear_check_and_raise_exn(gearman_client_errno(self->g_Client))) {
+        if (_pygear_check_and_raise_exn(gearman_client_errno(self->g_Client), gearman_client_error(self->g_Client))) {
             return NULL;
         }
     }
@@ -469,7 +469,7 @@ static PyObject* pygear_client_execute(pygear_ClientObject* self, PyObject* args
         goto catch;
     }
     // Make sure the task was run successfully
-    if (_pygear_check_and_raise_exn(gearman_task_return(new_task))) {
+    if (_pygear_check_and_raise_exn(gearman_task_return(new_task), gearman_client_error(self->g_Client))) {
         goto catch;
     }
     // Make use of the result
@@ -527,7 +527,7 @@ static PyObject* pygear_client_job_status(pygear_ClientObject* self, PyObject* a
         &is_known, &is_running,
         &numerator, &denominator
     );
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_client_error(self->g_Client))) {
         return NULL;
     }
     PyObject* status_dict = Py_BuildValue(
@@ -549,7 +549,7 @@ static PyObject* pygear_client_remove_servers(pygear_ClientObject* self) {
 
 static PyObject* pygear_client_run_tasks(pygear_ClientObject* self) {
     gearman_return_t result = gearman_client_run_tasks(self->g_Client);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_client_error(self->g_Client))) {
         return NULL;
     }
     Py_RETURN_NONE;
@@ -718,7 +718,7 @@ static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject
         return NULL;
     }
     gearman_status_t status = gearman_client_unique_status(self->g_Client, unique, unique_len);
-    if (_pygear_check_and_raise_exn(status.status_.mesg_.result_rc)) {
+    if (_pygear_check_and_raise_exn(status.status_.mesg_.result_rc, gearman_client_error(self->g_Client))) {
         return NULL;
     }
     PyObject* status_dict = Py_BuildValue(
@@ -734,7 +734,7 @@ static PyObject* pygear_client_unique_status(pygear_ClientObject* self, PyObject
 
 static PyObject* pygear_client_wait(pygear_ClientObject* self) {
     gearman_return_t result = gearman_client_wait(self->g_Client);
-    if (_pygear_check_and_raise_exn(result)) {
+    if (_pygear_check_and_raise_exn(result, gearman_client_error(self->g_Client))) {
         return NULL;
     }
     Py_RETURN_NONE;
