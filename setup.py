@@ -21,5 +21,8 @@ setup(
         'flake8',
         'pylint',
         'sphinx'
+    ],
+    install_requires=[
+        'simplejson',
     ]
 )
