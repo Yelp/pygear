@@ -63,10 +63,6 @@ def test_worker_set_identifier(w):
     w.set_identifier('cool')
 
 
-def test_worker_job_free_all(w):
-    pass
-
-
 def test_worker_namespace(w):
     pass
 
