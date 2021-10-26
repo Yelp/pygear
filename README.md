@@ -127,8 +127,6 @@ The gearman job server supports a text-based protocol to pull information and
 to run administrative tasks. Arguments of the commands are separated by
 whitespace. Commands are terminated with a CRLF('\r\n'), although just an
 LF('\n') will be accepted as well.
-See [protocol](https://github.com/paiweilai1984/gearman-packet/blob/master/PROTOCOL.md)
-for details of latest protocols.
 
 The following basic commands are supported:
 - workers
